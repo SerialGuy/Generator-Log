@@ -109,6 +109,14 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
+.generator-card.running {
+  border-left: 4px solid #28a745;
+}
+
+.generator-card.stopped {
+  border-left: 4px solid #dc3545;
+}
+
 .generator-header {
   display: flex;
   justify-content: space-between;
@@ -179,18 +187,179 @@
   font-weight: 500;
 }
 
+/* Tabs */
+.tabs {
+  display: flex;
+  background: white;
+  border-radius: 8px;
+  padding: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tab-btn.active {
+  background: #007bff;
+  color: white;
+}
+
+.tab-btn:hover:not(.active) {
+  background: #f8f9fa;
+}
+
+/* Zone Cards */
+.zone-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.zone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.zone-actions {
+  min-width: 200px;
+}
+
+.btn-group {
+  display: flex;
+  gap: 5px;
+}
+
+.btn-group .btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+/* Operator Cards */
+.operator-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.operator-card h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.operator-card p {
+  margin: 5px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  padding: 30px;
+  min-width: 400px;
+  max-width: 500px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-actions .btn {
+  flex: 1;
+}
+
+/* Zone Logs */
+.zone-logs {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.zone-logs h4 {
+  margin: 0 0 15px 0;
+  color: #007bff;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 5px;
+}
+
 @media (max-width: 768px) {
-  .auth-container {
-    margin: 50px auto;
-    padding: 30px 20px;
+  .container {
+    padding: 0 15px;
   }
   
-  .stats-grid {
+  .grid-2,
+  .grid-3 {
     grid-template-columns: 1fr;
   }
   
-  .generator-actions {
+  .flex-between {
     flex-direction: column;
+    gap: 10px;
+  }
+  
+  .tabs {
+    flex-wrap: wrap;
+  }
+  
+  .tab-btn {
+    flex: none;
+    min-width: 120px;
+  }
+  
+  .zone-header {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .zone-actions {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .modal {
+    min-width: 90%;
+    margin: 20px;
   }
   
   .log-table {
