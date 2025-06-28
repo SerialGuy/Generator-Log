@@ -7,6 +7,7 @@ const Dashboard = () => {
   const { user } = useContext(AuthContext);
   const socket = useContext(SocketContext);
   const [generators, setGenerators] = useState([]);
+  const [zones, setZones] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState('');
@@ -35,8 +36,11 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [generatorsRes, logsRes] = await Promise.all([
+      const [generatorsRes, zonesRes, logsRes] = await Promise.all([
         axios.get('/api/generators', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        }),
+        axios.get('/api/zones', {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         }),
         axios.get('/api/logs', {
@@ -45,6 +49,7 @@ const Dashboard = () => {
       ]);
       
       setGenerators(generatorsRes.data);
+      setZones(zonesRes.data);
       setLogs(logsRes.data);
     } catch (error) {
       toast.error('Failed to fetch data');
@@ -66,6 +71,11 @@ const Dashboard = () => {
       const message = error.response?.data?.error || `Failed to ${action} generator`;
       toast.error(message);
     }
+  };
+
+  const getZoneName = (zoneId) => {
+    const zone = zones.find(z => z.id === zoneId);
+    return zone ? zone.name : 'Unknown Zone';
   };
 
   if (loading) {
@@ -120,7 +130,7 @@ const Dashboard = () => {
                 <div className="generator-header">
                   <div>
                     <div className="generator-name">{generator.name}</div>
-                    <div className="generator-zone">Zone: {generator.zoneId}</div>
+                    <div className="generator-zone">Zone: {getZoneName(generator.zoneId)}</div>
                   </div>
                   <span className={`status-badge status-${generator.status}`}>
                     {generator.status}
@@ -158,6 +168,7 @@ const Dashboard = () => {
             <thead>
               <tr>
                 <th>Generator</th>
+                <th>Zone</th>
                 <th>Action</th>
                 <th>Location</th>
                 <th>Timestamp</th>
@@ -166,7 +177,8 @@ const Dashboard = () => {
             <tbody>
               {logs.slice(0, 10).map(log => (
                 <tr key={log.id}>
-                  <td>{log.generatorId}</td>
+                  <td>{log.generatorName || log.generatorId}</td>
+                  <td>{log.zoneName || getZoneName(log.zoneId)}</td>
                   <td className={`action-${log.action}`}>
                     {log.action.toUpperCase()}
                   </td>

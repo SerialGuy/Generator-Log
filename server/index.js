@@ -49,7 +49,7 @@ const authenticateToken = (req, res, next) => {
 
 // Initialize default data
 const initializeData = () => {
-  // Create default admin user
+  // Create default admin user only
   const adminPassword = bcrypt.hashSync('admin123', 10);
   users.push({
     id: uuidv4(),
@@ -60,21 +60,67 @@ const initializeData = () => {
     email: 'admin@generatorlog.com'
   });
 
-  // Create sample zones
-  zones.push(
-    { id: uuidv4(), name: 'Zone A', location: 'Building 1', assignedOperator: null },
-    { id: uuidv4(), name: 'Zone B', location: 'Building 2', assignedOperator: null },
-    { id: uuidv4(), name: 'Zone C', location: 'Building 3', assignedOperator: null }
-  );
+  // Create default operator for testing
+  const operatorPassword = bcrypt.hashSync('operator123', 10);
+  const defaultOperatorId = uuidv4();
+  users.push({
+    id: defaultOperatorId,
+    username: 'operator',
+    password: operatorPassword,
+    role: 'operator',
+    name: 'John Operator',
+    email: 'operator@generatorlog.com'
+  });
 
-  // Create sample generators
-  generators.push(
-    { id: uuidv4(), name: 'Generator A1', zoneId: zones[0].id, status: 'offline', lastOperator: null },
-    { id: uuidv4(), name: 'Generator A2', zoneId: zones[0].id, status: 'offline', lastOperator: null },
-    { id: uuidv4(), name: 'Generator B1', zoneId: zones[1].id, status: 'offline', lastOperator: null },
-    { id: uuidv4(), name: 'Generator B2', zoneId: zones[1].id, status: 'offline', lastOperator: null },
-    { id: uuidv4(), name: 'Generator C1', zoneId: zones[2].id, status: 'offline', lastOperator: null }
-  );
+  // Pre-populate zones and generators from the provided table
+  const zoneData = [
+    { name: 'HUSAINI MOHALLA', vendor: 'HORIZON', squareFeet: 11050, tons: 148, dg125: 5, dg65: 0 },
+    { name: 'WAJHI MOHALLA', vendor: 'HORIZON', squareFeet: 10000, tons: 134, dg125: 4, dg65: 1 },
+    { name: 'AL AQMAR', vendor: 'HORIZON', squareFeet: 9368, tons: 125, dg125: 4, dg65: 1 },
+    { name: 'HAIDERY TOWNSHIP', vendor: 'SELF', squareFeet: 4000, tons: 54, dg125: 2, dg65: 0 },
+    { name: 'HAKIMI VIAHR', vendor: 'PENDING', squareFeet: 5000, tons: 45, dg125: 2, dg65: 0 },
+    { name: 'SAI PARADISE', vendor: 'ANAS', squareFeet: 5500, tons: 74, dg125: 3, dg65: 0 },
+    { name: 'HASANJI NAGAR', vendor: 'ANAS', squareFeet: 21577, tons: 288, dg125: 9, dg65: 0 },
+    { name: 'RAU', vendor: 'HORIZON', squareFeet: 6854, tons: 92, dg125: 3, dg65: 1 },
+    { name: 'MHOW EZZY', vendor: 'PENDING', squareFeet: 3704, tons: 25, dg125: 1, dg65: 1 },
+    { name: 'MHOW SAIFFE', vendor: 'SELF', squareFeet: null, tons: null, dg125: 0, dg65: 0 },
+    { name: 'MASAKIN', vendor: 'SELF', squareFeet: null, tons: null, dg125: 0, dg65: 0 },
+  ];
+
+  zoneData.forEach((z, idx) => {
+    const zoneId = uuidv4();
+    zones.push({
+      id: zoneId,
+      name: z.name,
+      location: z.vendor + (z.squareFeet ? `, ${z.squareFeet} sqft` : ''),
+      assignedOperator: null,
+      vendor: z.vendor,
+      squareFeet: z.squareFeet,
+      tons: z.tons
+    });
+    // Add 125kVA generators
+    for (let i = 1; i <= z.dg125; i++) {
+      generators.push({
+        id: uuidv4(),
+        name: `125kVA #${i}`,
+        zoneId,
+        status: 'offline',
+        lastOperator: null,
+        kva: 125
+      });
+    }
+    // Add 65kVA generators
+    for (let i = 1; i <= z.dg65; i++) {
+      generators.push({
+        id: uuidv4(),
+        name: `65kVA #${i}`,
+        zoneId,
+        status: 'offline',
+        lastOperator: null,
+        kva: 65
+      });
+    }
+  });
 };
 
 // API Routes
@@ -193,9 +239,13 @@ app.post('/api/generators/:id/start', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Generator is already running' });
     }
 
+    const zone = zones.find(z => z.id === generator.zoneId);
     const logEntry = {
       id: uuidv4(),
       generatorId: id,
+      generatorName: generator.name,
+      zoneId: generator.zoneId,
+      zoneName: zone ? zone.name : 'Unknown Zone',
       operatorId: req.user.id,
       operatorName: req.user.name,
       action: 'start',
@@ -240,9 +290,13 @@ app.post('/api/generators/:id/stop', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Generator is already offline' });
     }
 
+    const zone = zones.find(z => z.id === generator.zoneId);
     const logEntry = {
       id: uuidv4(),
       generatorId: id,
+      generatorName: generator.name,
+      zoneId: generator.zoneId,
+      zoneName: zone ? zone.name : 'Unknown Zone',
       operatorId: req.user.id,
       operatorName: req.user.name,
       action: 'stop',
@@ -323,7 +377,7 @@ app.put('/api/zones/:id', authenticateToken, (req, res) => {
   }
 
   const { id } = req.params;
-  const { name, location } = req.body;
+  const { name, generatorsByType, operatorId } = req.body;
 
   const zone = zones.find(z => z.id === id);
   if (!zone) {
@@ -331,7 +385,49 @@ app.put('/api/zones/:id', authenticateToken, (req, res) => {
   }
 
   if (name) zone.name = name;
-  if (location) zone.location = location;
+
+  // Update operator assignment (enforce unique)
+  if (typeof operatorId !== 'undefined') {
+    if (operatorId) {
+      const operator = users.find(u => u.id === operatorId && u.role === 'operator');
+      if (!operator) {
+        return res.status(404).json({ error: 'Operator not found' });
+      }
+      zones.forEach(z => {
+        if (z.assignedOperator === operatorId) {
+          z.assignedOperator = null;
+        }
+      });
+      zone.assignedOperator = operatorId;
+    } else {
+      zone.assignedOperator = null;
+    }
+  }
+
+  // Update generators if provided
+  if (generatorsByType && typeof generatorsByType === 'object') {
+    // Remove existing generators for this zone
+    const existingGenerators = generators.filter(g => g.zoneId === id);
+    existingGenerators.forEach(gen => {
+      const index = generators.findIndex(g => g.id === gen.id);
+      if (index !== -1) {
+        generators.splice(index, 1);
+      }
+    });
+    // Add new generators by type
+    Object.entries(generatorsByType).forEach(([kva, count]) => {
+      for (let i = 1; i <= count; i++) {
+        generators.push({
+          id: uuidv4(),
+          name: `${kva}kVA #${i}`,
+          zoneId: id,
+          status: 'offline',
+          lastOperator: null,
+          kva: Number(kva)
+        });
+      }
+    });
+  }
 
   res.json({ message: 'Zone updated successfully', zone });
 });
@@ -468,6 +564,65 @@ app.get('/api/users', authenticateToken, (req, res) => {
   res.json(userList);
 });
 
+// Combined zone creation with generator and operator assignment (admin only)
+app.post('/api/zones/complete', authenticateToken, (req, res) => {
+  if (req.user.role !== 'administrator') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const { zoneName, generatorsByType, operatorId } = req.body;
+
+  if (!zoneName || !generatorsByType) {
+    return res.status(400).json({ error: 'Zone name and generator counts are required' });
+  }
+
+  // If operatorId is provided, enforce unique assignment
+  if (operatorId) {
+    const operator = users.find(u => u.id === operatorId && u.role === 'operator');
+    if (!operator) {
+      return res.status(404).json({ error: 'Operator not found' });
+    }
+    // Remove operator from any other zones first
+    zones.forEach(z => {
+      if (z.assignedOperator === operatorId) {
+        z.assignedOperator = null;
+      }
+    });
+  }
+
+  // Create new zone
+  const newZone = {
+    id: uuidv4(),
+    name: zoneName,
+    location: '', // location removed
+    assignedOperator: operatorId || null
+  };
+
+  // Create generators for this zone by type
+  const newGenerators = [];
+  Object.entries(generatorsByType).forEach(([kva, count]) => {
+    for (let i = 1; i <= count; i++) {
+      newGenerators.push({
+        id: uuidv4(),
+        name: `${kva}kVA #${i}`,
+        zoneId: newZone.id,
+        status: 'offline',
+        lastOperator: null,
+        kva: Number(kva)
+      });
+    }
+  });
+
+  zones.push(newZone);
+  generators.push(...newGenerators);
+
+  res.status(201).json({
+    message: 'Zone created successfully',
+    zone: newZone,
+    generators: newGenerators
+  });
+});
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
@@ -484,6 +639,7 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📝 Default admin credentials: admin / admin123`);
+  console.log(`👤 Default operator credentials: operator / operator123`);
   console.log(`🔑 JWT Secret: ${JWT_SECRET}`);
   console.log(`🌐 Frontend should be available at: http://localhost:3000`);
 }); 
