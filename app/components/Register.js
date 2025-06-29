@@ -6,10 +6,7 @@ import { useRouter } from 'next/navigation';
 export default function Register() {
   const [formData, setFormData] = useState({
     username: '',
-    password: '',
-    name: '',
-    email: '',
-    role: 'operator'
+    password: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,7 +25,12 @@ export default function Register() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          name: formData.username, // Use username as name
+          email: `${formData.username}@generatorlog.com`, // Generate email from username
+          role: 'operator' // Default to operator role
+        })
       });
 
       const data = await response.json();
@@ -37,10 +39,7 @@ export default function Register() {
         setSuccess('Registration successful! You can now login.');
         setFormData({
           username: '',
-          password: '',
-          name: '',
-          email: '',
-          role: 'operator'
+          password: ''
         });
       } else {
         setError(data.error || 'Registration failed');
@@ -101,30 +100,6 @@ export default function Register() {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="name">Full Name</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            className="form-control"
-            value={formData.name}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="email">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            className="form-control"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="form-group">
           <label htmlFor="password">Password</label>
           <input
             type="password"
@@ -135,19 +110,6 @@ export default function Register() {
             onChange={handleChange}
             required
           />
-        </div>
-        <div className="form-group">
-          <label htmlFor="role">Role</label>
-          <select
-            id="role"
-            name="role"
-            className="form-control"
-            value={formData.role}
-            onChange={handleChange}
-          >
-            <option value="operator">Operator</option>
-            <option value="administrator">Administrator</option>
-          </select>
         </div>
         <button
           type="submit"

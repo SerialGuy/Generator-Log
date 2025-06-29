@@ -29,10 +29,17 @@ export async function GET(request) {
   try {
     const user = authenticateToken(request);
 
-    const { data: zones, error } = await supabase
+    let query = supabase
       .from('zones')
       .select('*')
       .order('name');
+
+    // If user is operator, only show zones assigned to them
+    if (user.role === 'operator') {
+      query = query.eq('assigned_operator_id', user.id);
+    }
+
+    const { data: zones, error } = await query;
 
     if (error) {
       console.error('Error fetching zones:', error);

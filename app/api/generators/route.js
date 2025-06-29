@@ -41,7 +41,7 @@ export async function GET(request) {
         )
       `);
 
-    // If user is operator, only show their assigned generators
+    // If user is operator, only show generators from zones assigned to them
     if (user.role === 'operator') {
       query = query.eq('zones.assigned_operator_id', user.id);
     }

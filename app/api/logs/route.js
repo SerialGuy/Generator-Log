@@ -36,15 +36,28 @@ export async function GET(request) {
         generators (
           name,
           zones (
-            name
+            name,
+            assigned_operator_id
           )
         )
       `)
       .order('timestamp', { ascending: false });
 
-    // If user is operator, only show their logs
+    // If user is operator, only show logs from their assigned zones
     if (user.role === 'operator') {
-      query = query.eq('operator_id', user.id);
+      // First get the zones assigned to this operator
+      const { data: assignedZones } = await supabase
+        .from('zones')
+        .select('id')
+        .eq('assigned_operator_id', user.id);
+      
+      if (assignedZones && assignedZones.length > 0) {
+        const zoneIds = assignedZones.map(zone => zone.id);
+        query = query.in('generators.zones.id', zoneIds);
+      } else {
+        // If no zones assigned, return empty array
+        return NextResponse.json([]);
+      }
     }
 
     const { data: logs, error } = await query;
