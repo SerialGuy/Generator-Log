@@ -30,7 +30,6 @@ export async function POST(request, { params }) {
   try {
     const user = authenticateToken(request);
     const { id, action } = params;
-    const { location } = await request.json();
 
     if (!['start', 'stop'].includes(action)) {
       return NextResponse.json(
@@ -66,7 +65,7 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Create log entry
+    // Create log entry (without location)
     const { error: logError } = await supabase
       .from('logs')
       .insert({
@@ -74,7 +73,6 @@ export async function POST(request, { params }) {
         operator_id: user.id,
         operator_name: user.username,
         action,
-        location: location || 'Unknown',
         timestamp: new Date().toISOString()
       });
 

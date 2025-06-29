@@ -11,7 +11,6 @@ export default function Dashboard() {
   const [zones, setZones] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [location, setLocation] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -75,7 +74,7 @@ export default function Dashboard() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ location })
+        body: JSON.stringify({})
       });
 
       if (response.ok) {
@@ -135,19 +134,6 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="card" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-            <h3 style={{ marginBottom: '15px' }}>Location Input</h3>
-            <div className="form-group">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Enter your current location (optional)"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-          </div>
-
           <div className="card" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
             <h3 style={{ marginBottom: '20px' }}>Your Generators</h3>
             {generators.length === 0 ? (
@@ -209,19 +195,19 @@ export default function Dashboard() {
                     <th>Generator</th>
                     <th>Zone</th>
                     <th>Action</th>
-                    <th>Location</th>
+                    <th>Operator</th>
                     <th>Timestamp</th>
                   </tr>
                 </thead>
                 <tbody>
                   {logs.slice(0, 10).map(log => (
                     <tr key={log.id}>
-                      <td>{log.generator_name || log.generator_id}</td>
-                      <td>{log.zone_name || getZoneName(log.zone_id)}</td>
+                      <td>{log.generators?.name || 'Unknown Generator'}</td>
+                      <td>{log.generators?.zones?.name || 'Unknown Zone'}</td>
                       <td className={`action-${log.action}`}>
                         {log.action.toUpperCase()}
                       </td>
-                      <td className="location">{log.location}</td>
+                      <td>{log.operator_name}</td>
                       <td className="timestamp">
                         {new Date(log.timestamp).toLocaleString()}
                       </td>

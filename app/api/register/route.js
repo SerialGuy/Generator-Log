@@ -11,9 +11,9 @@ export async function POST(request) {
   try {
     const { username, password, name, email, role = 'operator' } = await request.json();
 
-    if (!username || !password) {
+    if (!username || !password || !name) {
       return NextResponse.json(
-        { error: 'Username and password are required' },
+        { error: 'Username, password, and name are required' },
         { status: 400 }
       );
     }
@@ -35,13 +35,13 @@ export async function POST(request) {
     // Hash password
     const hashedPassword = bcrypt.hashSync(password, 10);
 
-    // Create user with default values for name, email, and role
+    // Create user with provided values
     const { data: user, error } = await supabase
       .from('users')
       .insert({
         username,
         password: hashedPassword,
-        name: name || username, // Use username as name if not provided
+        name: name,
         email: email || `${username}@generatorlog.com`, // Generate email if not provided
         role: role || 'operator' // Default to operator role
       })

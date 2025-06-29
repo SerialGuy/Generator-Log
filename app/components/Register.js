@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 export default function Register() {
   const [formData, setFormData] = useState({
     username: '',
-    password: ''
+    password: '',
+    name: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,7 +28,6 @@ export default function Register() {
         },
         body: JSON.stringify({
           ...formData,
-          name: formData.username, // Use username as name
           email: `${formData.username}@generatorlog.com`, // Generate email from username
           role: 'operator' // Default to operator role
         })
@@ -39,7 +39,8 @@ export default function Register() {
         setSuccess('Registration successful! You can now login.');
         setFormData({
           username: '',
-          password: ''
+          password: '',
+          name: ''
         });
       } else {
         setError(data.error || 'Registration failed');
@@ -87,6 +88,18 @@ export default function Register() {
         </div>
       )}
       <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="name">Full Name</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            className="form-control"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
+        </div>
         <div className="form-group">
           <label htmlFor="username">Username</label>
           <input

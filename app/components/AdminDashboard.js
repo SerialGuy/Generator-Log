@@ -162,7 +162,7 @@ export default function AdminDashboard() {
 
   const getOperatorName = (operatorId) => {
     const operator = users.find(u => u.id === operatorId);
-    return operator ? operator.name : 'Unassigned';
+    return operator ? `${operator.name} (${operator.username})` : 'Unassigned';
   };
 
   const getZoneLogs = (zoneId) => {
@@ -374,19 +374,17 @@ export default function AdminDashboard() {
                         <th>Generator</th>
                         <th>Operator</th>
                         <th>Action</th>
-                        <th>Location</th>
                         <th>Timestamp</th>
                       </tr>
                     </thead>
                     <tbody>
                       {zoneLogs.slice(0, 5).map(log => (
                         <tr key={log.id}>
-                          <td>{log.generator_name || log.generator_id}</td>
+                          <td>{log.generators?.name || 'Unknown Generator'}</td>
                           <td>{log.operator_name}</td>
                           <td className={`action-${log.action}`}>
                             {log.action.toUpperCase()}
                           </td>
-                          <td className="location">{log.location}</td>
                           <td className="timestamp">
                             {new Date(log.timestamp).toLocaleString()}
                           </td>

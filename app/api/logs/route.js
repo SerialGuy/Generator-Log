@@ -29,48 +29,74 @@ export async function GET(request) {
   try {
     const user = authenticateToken(request);
 
-    let query = supabase
-      .from('logs')
-      .select(`
-        *,
-        generators (
-          name,
-          zones (
-            name,
-            assigned_operator_id
-          )
-        )
-      `)
-      .order('timestamp', { ascending: false });
-
-    // If user is operator, only show logs from their assigned zones
+    // If user is operator, first get their assigned zones
     if (user.role === 'operator') {
-      // First get the zones assigned to this operator
       const { data: assignedZones } = await supabase
         .from('zones')
         .select('id')
         .eq('assigned_operator_id', user.id);
       
-      if (assignedZones && assignedZones.length > 0) {
-        const zoneIds = assignedZones.map(zone => zone.id);
-        query = query.in('generators.zones.id', zoneIds);
-      } else {
-        // If no zones assigned, return empty array
+      if (!assignedZones || assignedZones.length === 0) {
         return NextResponse.json([]);
       }
+
+      const zoneIds = assignedZones.map(zone => zone.id);
+      
+      // Get logs from generators in assigned zones
+      const { data: logs, error } = await supabase
+        .from('logs')
+        .select(`
+          id,
+          action,
+          timestamp,
+          operator_name,
+          generators (
+            name,
+            zones (
+              name
+            )
+          )
+        `)
+        .in('generators.zones.id', zoneIds)
+        .order('timestamp', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching logs:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch logs' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(logs);
+    } else {
+      // Admin can see all logs
+      const { data: logs, error } = await supabase
+        .from('logs')
+        .select(`
+          id,
+          action,
+          timestamp,
+          operator_name,
+          generators (
+            name,
+            zones (
+              name
+            )
+          )
+        `)
+        .order('timestamp', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching logs:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch logs' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(logs);
     }
-
-    const { data: logs, error } = await query;
-
-    if (error) {
-      console.error('Error fetching logs:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch logs' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(logs);
   } catch (error) {
     console.error('Error fetching logs:', error);
     if (error.message === 'Access token required') {

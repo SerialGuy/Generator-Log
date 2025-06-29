@@ -23,8 +23,8 @@ const Navigation = () => {
           <div className="flex" style={{ alignItems: 'center', gap: '20px' }}>
             <div style={{ textAlign: 'right' }}>
               <p style={{ margin: 0, fontWeight: '500', color: '#333' }}>{user.name}</p>
-              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#666', textTransform: 'capitalize' }}>
-                {user.role}
+              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#666' }}>
+                {user.username} • {user.role}
               </p>
             </div>
             <button onClick={logout} className="btn btn-secondary">

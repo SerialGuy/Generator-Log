@@ -29,34 +29,66 @@ export async function GET(request) {
   try {
     const user = authenticateToken(request);
 
-    let query = supabase
-      .from('generators')
-      .select(`
-        *,
-        zones (
-          id,
-          name,
-          location,
-          assigned_operator_id
-        )
-      `);
-
-    // If user is operator, only show generators from zones assigned to them
+    // If user is operator, first get their assigned zones
     if (user.role === 'operator') {
-      query = query.eq('zones.assigned_operator_id', user.id);
+      const { data: assignedZones } = await supabase
+        .from('zones')
+        .select('id')
+        .eq('assigned_operator_id', user.id);
+      
+      if (!assignedZones || assignedZones.length === 0) {
+        return NextResponse.json([]);
+      }
+
+      const zoneIds = assignedZones.map(zone => zone.id);
+      
+      // Get generators only from assigned zones
+      const { data: generators, error } = await supabase
+        .from('generators')
+        .select(`
+          *,
+          zones (
+            id,
+            name,
+            location,
+            assigned_operator_id
+          )
+        `)
+        .in('zone_id', zoneIds);
+
+      if (error) {
+        console.error('Error fetching generators:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch generators' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(generators);
+    } else {
+      // Admin can see all generators
+      const { data: generators, error } = await supabase
+        .from('generators')
+        .select(`
+          *,
+          zones (
+            id,
+            name,
+            location,
+            assigned_operator_id
+          )
+        `);
+
+      if (error) {
+        console.error('Error fetching generators:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch generators' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(generators);
     }
-
-    const { data: generators, error } = await query;
-
-    if (error) {
-      console.error('Error fetching generators:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch generators' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(generators);
   } catch (error) {
     console.error('Error fetching generators:', error);
     if (error.message === 'Access token required') {
