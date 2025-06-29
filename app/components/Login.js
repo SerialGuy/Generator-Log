@@ -1,18 +1,48 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { toast } from 'react-hot-toast';
-import axios from 'axios';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 
-const Login = () => {
+export default function Login() {
   const [formData, setFormData] = useState({
     username: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
   const { login } = useAuth();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await login(data.user, data.token);
+        router.push('/');
+      } else {
+        setError(data.error || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -21,25 +51,21 @@ const Login = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const response = await axios.post('/api/login', formData);
-      login(response.data.user, response.data.token);
-      toast.success('Login successful!');
-    } catch (error) {
-      const message = error.response?.data?.error || 'Login failed';
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="auth-container">
-      <h2>Login to Generator Log</h2>
+      <h2>Login</h2>
+      {error && (
+        <div style={{ 
+          background: '#f8d7da', 
+          color: '#721c24', 
+          padding: '10px', 
+          borderRadius: '4px', 
+          marginBottom: '20px',
+          border: '1px solid #f5c6cb'
+        }}>
+          {error}
+        </div>
+      )}
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="username">Username</label>
@@ -75,13 +101,8 @@ const Login = () => {
         </button>
       </form>
       <div className="auth-links">
-        <p>Don't have an account? <Link href="/register">Register here</Link></p>
-        <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
-          Demo admin: admin / admin123
-        </p>
+        <p>Don't have an account? <a href="/register">Register here</a></p>
       </div>
     </div>
   );
-};
-
-export default Login; 
+} 

@@ -1,19 +1,57 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { toast } from 'react-hot-toast';
-import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
-const Register = () => {
+export default function Register() {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    confirmPassword: '',
     name: '',
-    email: ''
+    email: '',
+    role: 'operator'
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const router = useRouter();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('Registration successful! You can now login.');
+        setFormData({
+          username: '',
+          password: '',
+          name: '',
+          email: '',
+          role: 'operator'
+        });
+      } else {
+        setError(data.error || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setError('Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -22,37 +60,46 @@ const Register = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters long');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { confirmPassword, ...registrationData } = formData;
-      await axios.post('/api/register', registrationData);
-      toast.success('Registration successful! Please login.');
-    } catch (error) {
-      const message = error.response?.data?.error || 'Registration failed';
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="auth-container">
-      <h2>Register as Operator</h2>
+      <h2>Register</h2>
+      {error && (
+        <div style={{ 
+          background: '#f8d7da', 
+          color: '#721c24', 
+          padding: '10px', 
+          borderRadius: '4px', 
+          marginBottom: '20px',
+          border: '1px solid #f5c6cb'
+        }}>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div style={{ 
+          background: '#d4edda', 
+          color: '#155724', 
+          padding: '10px', 
+          borderRadius: '4px', 
+          marginBottom: '20px',
+          border: '1px solid #c3e6cb'
+        }}>
+          {success}
+        </div>
+      )}
       <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="username">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            className="form-control"
+            value={formData.username}
+            onChange={handleChange}
+            required
+          />
+        </div>
         <div className="form-group">
           <label htmlFor="name">Full Name</label>
           <input
@@ -78,18 +125,6 @@ const Register = () => {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="username">Username</label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            className="form-control"
-            value={formData.username}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="form-group">
           <label htmlFor="password">Password</label>
           <input
             type="password"
@@ -99,20 +134,20 @@ const Register = () => {
             value={formData.password}
             onChange={handleChange}
             required
-            minLength="6"
           />
         </div>
         <div className="form-group">
-          <label htmlFor="confirmPassword">Confirm Password</label>
-          <input
-            type="password"
-            id="confirmPassword"
-            name="confirmPassword"
+          <label htmlFor="role">Role</label>
+          <select
+            id="role"
+            name="role"
             className="form-control"
-            value={formData.confirmPassword}
+            value={formData.role}
             onChange={handleChange}
-            required
-          />
+          >
+            <option value="operator">Operator</option>
+            <option value="administrator">Administrator</option>
+          </select>
         </div>
         <button
           type="submit"
@@ -124,10 +159,8 @@ const Register = () => {
         </button>
       </form>
       <div className="auth-links">
-        <p>Already have an account? <Link href="/login">Login here</Link></p>
+        <p>Already have an account? <a href="/login">Login here</a></p>
       </div>
     </div>
   );
-};
-
-export default Register; 
+} 

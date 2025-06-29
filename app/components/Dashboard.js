@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { toast } from 'react-hot-toast';
-import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 
-const Dashboard = () => {
+export default function Dashboard() {
   const { user } = useAuth();
-  const socket = useSocket();
+  const { socket } = useSocket();
   const [generators, setGenerators] = useState([]);
   const [zones, setZones] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -16,63 +14,80 @@ const Dashboard = () => {
   const [location, setLocation] = useState('');
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (socket) {
-      socket.on('generatorUpdate', (data) => {
-        setGenerators(prev => 
-          prev.map(gen => 
-            gen.id === data.generator.id ? data.generator : gen
-          )
-        );
-        setLogs(prev => [data.log, ...prev]);
-        toast.success(`Generator ${data.generator.name} ${data.log.action}ed by ${data.log.operatorName}`);
-      });
-
-      return () => {
-        socket.off('generatorUpdate');
-      };
+    if (user) {
+      fetchData();
+      // Poll for updates every 10 seconds
+      const interval = setInterval(fetchData, 10000);
+      return () => clearInterval(interval);
     }
-  }, [socket]);
+  }, [user]);
 
   const fetchData = async () => {
     try {
-      const [generatorsRes, zonesRes, logsRes] = await Promise.all([
-        axios.get('/api/generators', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get('/api/zones', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get('/api/logs', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        })
-      ]);
+      const token = localStorage.getItem('token');
       
-      setGenerators(generatorsRes.data);
-      setZones(zonesRes.data);
-      setLogs(logsRes.data);
+      // Fetch generators
+      const generatorsResponse = await fetch('/api/generators', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (generatorsResponse.ok) {
+        const generatorsData = await generatorsResponse.json();
+        setGenerators(generatorsData);
+      }
+
+      // Fetch zones
+      const zonesResponse = await fetch('/api/zones', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (zonesResponse.ok) {
+        const zonesData = await zonesResponse.json();
+        setZones(zonesData);
+      }
+
+      // Fetch logs
+      const logsResponse = await fetch('/api/logs', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (logsResponse.ok) {
+        const logsData = await logsResponse.json();
+        setLogs(logsData);
+      }
+
+      setLoading(false);
     } catch (error) {
-      toast.error('Failed to fetch data');
-    } finally {
+      console.error('Error fetching data:', error);
       setLoading(false);
     }
   };
 
   const handleGeneratorAction = async (generatorId, action) => {
     try {
-      await axios.post(`/api/generators/${generatorId}/${action}`, 
-        { location },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      
-      toast.success(`Generator ${action}ed successfully`);
-      setLocation('');
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/generators/${generatorId}/${action}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ location })
+      });
+
+      if (response.ok) {
+        // Refresh data after action
+        fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Action failed');
+      }
     } catch (error) {
-      const message = error.response?.data?.error || `Failed to ${action} generator`;
-      toast.error(message);
+      console.error('Error performing action:', error);
+      alert('Action failed');
     }
   };
 
@@ -205,6 +220,4 @@ const Dashboard = () => {
       </div>
     </div>
   );
-};
-
-export default Dashboard; 
+} 

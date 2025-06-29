@@ -1,125 +1,138 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { toast } from 'react-hot-toast';
-import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 
-const AdminDashboard = () => {
+export default function AdminDashboard() {
   const { user } = useAuth();
-  const socket = useSocket();
+  const { socket } = useSocket();
   const [generators, setGenerators] = useState([]);
   const [zones, setZones] = useState([]);
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [collapsedZones, setCollapsedZones] = useState({});
   const [showAddZoneModal, setShowAddZoneModal] = useState(false);
   const [showEditZoneModal, setShowEditZoneModal] = useState(false);
   const [editingZone, setEditingZone] = useState(null);
-  const generatorTypes = [65, 125, 250, 320, 500];
   const [zoneForm, setZoneForm] = useState({
     zoneName: '',
     generatorsByType: { '65': 0, '125': 0, '250': 0, '320': 0, '500': 0 },
     operatorId: ''
   });
-  const [collapsedZones, setCollapsedZones] = useState({});
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (socket) {
-      socket.on('generatorUpdate', (data) => {
-        setGenerators(prev => 
-          prev.map(gen => 
-            gen.id === data.generator.id ? data.generator : gen
-          )
-        );
-        setLogs(prev => [data.log, ...prev]);
-        toast.success(`Generator ${data.generator.name} ${data.log.action}ed by ${data.log.operatorName}`);
-      });
-
-      return () => {
-        socket.off('generatorUpdate');
-      };
+    if (user) {
+      fetchData();
+      // Poll for updates every 10 seconds
+      const interval = setInterval(fetchData, 10000);
+      return () => clearInterval(interval);
     }
-  }, [socket]);
+  }, [user]);
 
   const fetchData = async () => {
     try {
+      const token = localStorage.getItem('token');
+      
+      // Fetch all data
       const [generatorsRes, zonesRes, usersRes, logsRes] = await Promise.all([
-        axios.get('/api/generators', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        fetch('/api/generators', {
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
-        axios.get('/api/zones', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        fetch('/api/zones', {
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
-        axios.get('/api/users', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
-        axios.get('/api/logs', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        fetch('/api/logs', {
+          headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
-      
-      setGenerators(generatorsRes.data);
-      setZones(zonesRes.data);
-      setUsers(usersRes.data);
-      setLogs(logsRes.data);
+
+      if (generatorsRes.ok) {
+        const generatorsData = await generatorsRes.json();
+        setGenerators(generatorsData);
+      }
+      if (zonesRes.ok) {
+        const zonesData = await zonesRes.json();
+        setZones(zonesData);
+      }
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        setUsers(usersData);
+      }
+      if (logsRes.ok) {
+        const logsData = await logsRes.json();
+        setLogs(logsData);
+      }
+
+      setLoading(false);
     } catch (error) {
-      toast.error('Failed to fetch data');
-    } finally {
+      console.error('Error fetching data:', error);
       setLoading(false);
     }
   };
 
-  const handleAddZone = async () => {
+  const handleCreateZone = async () => {
     try {
-      const totalGens = Object.values(zoneForm.generatorsByType).reduce((a, b) => a + b, 0);
-      if (totalGens === 0) {
-        toast.error('At least one generator is required');
-        return;
-      }
-      await axios.post('/api/zones/complete', {
-        zoneName: zoneForm.zoneName,
-        generatorsByType: zoneForm.generatorsByType,
-        operatorId: zoneForm.operatorId || undefined
-      }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/zones/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(zoneForm)
       });
-      toast.success('Zone created successfully');
-      setShowAddZoneModal(false);
-      setZoneForm({ zoneName: '', generatorsByType: { '65': 0, '125': 0, '250': 0, '320': 0, '500': 0 }, operatorId: '' });
-      fetchData();
+
+      if (response.ok) {
+        setShowAddZoneModal(false);
+        setZoneForm({
+          zoneName: '',
+          generatorsByType: { '65': 0, '125': 0, '250': 0, '320': 0, '500': 0 },
+          operatorId: ''
+        });
+        fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to create zone');
+      }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to create zone');
+      console.error('Error creating zone:', error);
+      alert('Failed to create zone');
     }
   };
 
-  const handleEditZone = async () => {
+  const handleUpdateZone = async () => {
     try {
-      const generatorsList = zoneForm.generators.filter(name => name.trim() !== '');
-      if (generatorsList.length === 0) {
-        toast.error('At least one generator name is required');
-        return;
-      }
-
-      await axios.put(`/api/zones/${editingZone.id}`, {
-        name: zoneForm.zoneName,
-        location: zoneForm.zoneLocation,
-        generators: generatorsList
-      }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/zones/${editingZone.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(zoneForm)
       });
-      toast.success('Zone updated successfully');
-      setShowEditZoneModal(false);
-      setEditingZone(null);
-      setZoneForm({ zoneName: '', zoneLocation: '', generators: [''], operatorId: '' });
-      fetchData();
+
+      if (response.ok) {
+        setShowEditZoneModal(false);
+        setEditingZone(null);
+        setZoneForm({
+          zoneName: '',
+          generatorsByType: { '65': 0, '125': 0, '250': 0, '320': 0, '500': 0 },
+          operatorId: ''
+        });
+        fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update zone');
+      }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to update zone');
+      console.error('Error updating zone:', error);
+      alert('Failed to update zone');
     }
   };
 
@@ -140,32 +153,6 @@ const AdminDashboard = () => {
       operatorId: zone.assigned_operator_id || ''
     });
     setShowEditZoneModal(true);
-  };
-
-  const addGeneratorField = () => {
-    setZoneForm({
-      ...zoneForm,
-      generators: [...zoneForm.generators, '']
-    });
-  };
-
-  const removeGeneratorField = (index) => {
-    if (zoneForm.generators.length > 1) {
-      const newGenerators = zoneForm.generators.filter((_, i) => i !== index);
-      setZoneForm({
-        ...zoneForm,
-        generators: newGenerators
-      });
-    }
-  };
-
-  const updateGeneratorField = (index, value) => {
-    const newGenerators = [...zoneForm.generators];
-    newGenerators[index] = value;
-    setZoneForm({
-      ...zoneForm,
-      generators: newGenerators
-    });
   };
 
   const getZoneName = (zoneId) => {
@@ -418,34 +405,23 @@ const AdminDashboard = () => {
       {showAddZoneModal && (
         <div className="modal-overlay">
           <div className="modal">
-            <h2>Add New Zone</h2>
+            <h3>Add New Zone</h3>
             <div className="form-group">
               <label>Zone Name</label>
               <input
                 type="text"
                 className="form-control"
                 value={zoneForm.zoneName}
-                onChange={e => setZoneForm({ ...zoneForm, zoneName: e.target.value })}
+                onChange={(e) => setZoneForm({ ...zoneForm, zoneName: e.target.value })}
                 placeholder="Enter zone name"
               />
             </div>
             <div className="form-group">
-              <label>Generators</label>
-              {generatorTypes.map(type => (
-                <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <span style={{ minWidth: 70 }}>{type} kVA</span>
-                  <button type="button" className="btn btn-secondary" onClick={() => setZoneForm({ ...zoneForm, generatorsByType: { ...zoneForm.generatorsByType, [type]: Math.max(0, zoneForm.generatorsByType[type] - 1) } })}>-</button>
-                  <span style={{ minWidth: 24, textAlign: 'center' }}>{zoneForm.generatorsByType[type]}</span>
-                  <button type="button" className="btn btn-secondary" onClick={() => setZoneForm({ ...zoneForm, generatorsByType: { ...zoneForm.generatorsByType, [type]: zoneForm.generatorsByType[type] + 1 } })}>+</button>
-                </div>
-              ))}
-            </div>
-            <div className="form-group">
-              <label>Assign Operator (optional)</label>
+              <label>Assigned Operator</label>
               <select
                 className="form-control"
                 value={zoneForm.operatorId}
-                onChange={e => setZoneForm({ ...zoneForm, operatorId: e.target.value })}
+                onChange={(e) => setZoneForm({ ...zoneForm, operatorId: e.target.value })}
               >
                 <option value="">No operator assigned</option>
                 {operators.filter(op => !zones.some(z => z.assigned_operator_id === op.id)).map(operator => (
@@ -455,93 +431,96 @@ const AdminDashboard = () => {
                 ))}
               </select>
             </div>
+            <div className="form-group">
+              <label>Generators</label>
+              {Object.entries(zoneForm.generatorsByType).map(([kva, count]) => (
+                <div key={kva} style={{ marginBottom: '10px' }}>
+                  <label style={{ display: 'inline-block', width: '80px' }}>{kva}kVA:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={count}
+                    onChange={(e) => setZoneForm({
+                      ...zoneForm,
+                      generatorsByType: {
+                        ...zoneForm.generatorsByType,
+                        [kva]: parseInt(e.target.value) || 0
+                      }
+                    })}
+                    style={{ width: '60px', marginLeft: '10px' }}
+                  />
+                </div>
+              ))}
+            </div>
             <div className="modal-actions">
-              <button className="btn btn-primary" onClick={handleAddZone}>Add Zone</button>
-              <button className="btn btn-secondary" onClick={() => setShowAddZoneModal(false)}>Cancel</button>
+              <button className="btn btn-secondary" onClick={() => setShowAddZoneModal(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleCreateZone}>
+                Create Zone
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* Edit Zone Modal */}
-      {showEditZoneModal && (
+      {showEditZoneModal && editingZone && (
         <div className="modal-overlay">
           <div className="modal">
-            <h3>Edit Zone: {editingZone?.name}</h3>
+            <h3>Edit Zone: {editingZone.name}</h3>
             <div className="form-group">
               <label>Zone Name</label>
               <input
                 type="text"
                 className="form-control"
                 value={zoneForm.zoneName}
-                onChange={e => setZoneForm({ ...zoneForm, zoneName: e.target.value })}
+                onChange={(e) => setZoneForm({ ...zoneForm, zoneName: e.target.value })}
                 placeholder="Enter zone name"
               />
             </div>
             <div className="form-group">
-              <label>Generators</label>
-              {generatorTypes.map(type => (
-                <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <span style={{ minWidth: 70 }}>{type} kVA</span>
-                  <button type="button" className="btn btn-secondary" onClick={() => setZoneForm({ ...zoneForm, generatorsByType: { ...zoneForm.generatorsByType, [type]: Math.max(0, zoneForm.generatorsByType[type] - 1) } })}>-</button>
-                  <span style={{ minWidth: 24, textAlign: 'center' }}>{zoneForm.generatorsByType[type]}</span>
-                  <button type="button" className="btn btn-secondary" onClick={() => setZoneForm({ ...zoneForm, generatorsByType: { ...zoneForm.generatorsByType, [type]: zoneForm.generatorsByType[type] + 1 } })}>+</button>
-                </div>
-              ))}
-            </div>
-            <div className="form-group">
-              <label>Assign Operator (optional)</label>
+              <label>Assigned Operator</label>
               <select
                 className="form-control"
                 value={zoneForm.operatorId}
-                onChange={e => setZoneForm({ ...zoneForm, operatorId: e.target.value })}
+                onChange={(e) => setZoneForm({ ...zoneForm, operatorId: e.target.value })}
               >
                 <option value="">No operator assigned</option>
-                {operators.filter(op => !zones.some(z => z.assigned_operator_id === op.id) || op.id === editingZone?.assigned_operator_id).map(operator => (
+                {operators.filter(op => !zones.some(z => z.assigned_operator_id === op.id) || op.id === editingZone.assigned_operator_id).map(operator => (
                   <option key={operator.id} value={operator.id}>
                     {operator.name} ({operator.username})
                   </option>
                 ))}
               </select>
             </div>
+            <div className="form-group">
+              <label>Generators</label>
+              {Object.entries(zoneForm.generatorsByType).map(([kva, count]) => (
+                <div key={kva} style={{ marginBottom: '10px' }}>
+                  <label style={{ display: 'inline-block', width: '80px' }}>{kva}kVA:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={count}
+                    onChange={(e) => setZoneForm({
+                      ...zoneForm,
+                      generatorsByType: {
+                        ...zoneForm.generatorsByType,
+                        [kva]: parseInt(e.target.value) || 0
+                      }
+                    })}
+                    style={{ width: '60px', marginLeft: '10px' }}
+                  />
+                </div>
+              ))}
+            </div>
             <div className="modal-actions">
-              <button
-                className="btn btn-primary"
-                onClick={async () => {
-                  try {
-                    const totalGens = Object.values(zoneForm.generatorsByType).reduce((a, b) => a + b, 0);
-                    if (totalGens === 0) {
-                      toast.error('At least one generator is required');
-                      return;
-                    }
-                    await axios.put(`/api/zones/${editingZone.id}`, {
-                      name: zoneForm.zoneName,
-                      generatorsByType: zoneForm.generatorsByType,
-                      operatorId: zoneForm.operatorId || undefined
-                    }, {
-                      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                    });
-                    toast.success('Zone updated successfully');
-                    setShowEditZoneModal(false);
-                    setEditingZone(null);
-                    setZoneForm({ zoneName: '', generatorsByType: { '65': 0, '125': 0, '250': 0, '320': 0, '500': 0 }, operatorId: '' });
-                    fetchData();
-                  } catch (error) {
-                    toast.error(error.response?.data?.error || 'Failed to update zone');
-                  }
-                }}
-              >
-                Update Zone
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  setShowEditZoneModal(false);
-                  setEditingZone(null);
-                  setZoneForm({ zoneName: '', generatorsByType: { '65': 0, '125': 0, '250': 0, '320': 0, '500': 0 }, operatorId: '' });
-                }}
-              >
+              <button className="btn btn-secondary" onClick={() => setShowEditZoneModal(false)}>
                 Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleUpdateZone}>
+                Update Zone
               </button>
             </div>
           </div>
@@ -549,6 +528,4 @@ const AdminDashboard = () => {
       )}
     </div>
   );
-};
-
-export default AdminDashboard; 
+} 

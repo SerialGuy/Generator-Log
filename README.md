@@ -1,182 +1,151 @@
-# Generator Log - Unified Next.js App
+# Generator Log - Next.js App
 
-A modern web-based generator logging application built with Next.js and Express.js, featuring real-time monitoring and management of generators with operator and administrator roles. **Everything runs on a single server!**
+A real-time generator management system built with Next.js 14, Supabase, and modern web technologies.
 
 ## Features
 
-- **Unified Deployment**: Frontend, backend, and Socket.IO all run on one server
-- **Real-time Updates**: Live generator status updates using Socket.IO
+- **Real-time Dashboard**: Monitor generator status and activity in real-time
 - **Role-based Access**: Separate dashboards for operators and administrators
-- **Zone Management**: Organize generators by zones with assigned operators
-- **Activity Logging**: Comprehensive logging of all generator actions
-- **Responsive Design**: Modern UI that works on desktop and mobile devices
+- **Zone Management**: Organize generators by zones with operator assignments
+- **Activity Logging**: Track all generator start/stop actions with timestamps
+- **Responsive Design**: Works on desktop and mobile devices
 - **Authentication**: Secure login system with JWT tokens
 
 ## Tech Stack
 
-- **Full Stack**: Next.js 14 + Express.js + Socket.IO
+- **Frontend**: Next.js 14 (App Router)
 - **Database**: Supabase (PostgreSQL)
-- **Authentication**: JWT tokens
-- **Real-time**: Socket.IO
+- **Authentication**: JWT with bcrypt password hashing
 - **Styling**: CSS with responsive design
-- **Notifications**: React Hot Toast
+- **Deployment**: Vercel
 
 ## Prerequisites
 
 - Node.js 18+ 
-- npm or yarn
-- Supabase account and project
+- Supabase account
+- Vercel account (for deployment)
 
-## Installation
+## Setup Instructions
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd generator-log-nextjs
-   ```
+### 1. Database Setup
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+1. Create a new Supabase project
+2. Run the SQL schema from `supabase-schema.sql` in your Supabase SQL editor
+3. Note down your Supabase URL and anon key
 
-3. **Set up Supabase**
-   - Create a new Supabase project
-   - Run the SQL schema from `supabase-schema.sql` in your Supabase SQL editor
-   - Get your Supabase URL and anon key
+### 2. Environment Variables
 
-4. **Configure environment variables**
-   Create a `.env.local` file in the root directory:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   JWT_SECRET=your_jwt_secret_key
-   NEXT_PUBLIC_APP_URL=https://your-domain.com
-   PORT=3000
-   ```
+Create a `.env.local` file in the root directory:
 
-5. **Start the unified server**
-   ```bash
-   npm run dev
-   ```
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+JWT_SECRET=your_jwt_secret_key
+```
 
-6. **Open your browser**
-   Navigate to `http://localhost:3000`
+### 3. Local Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Open http://localhost:3000
+```
+
+### 4. Vercel Deployment
+
+1. **Connect to Vercel**:
+   - Push your code to GitHub
+   - Connect your repository to Vercel
+   - Vercel will automatically detect Next.js
+
+2. **Set Environment Variables in Vercel**:
+   - Go to your Vercel project settings
+   - Add the same environment variables as in `.env.local`
+   - Redeploy after adding environment variables
+
+3. **Deploy**:
+   - Vercel will automatically deploy on every push to main branch
+   - Or manually deploy from the Vercel dashboard
 
 ## Default Users
 
-The application creates default users on first run:
+After running the schema, default users are created:
 
-- **Administrator**: `admin` / `admin123`
+- **Admin**: `admin` / `admin123`
 - **Operator**: `operator` / `operator123`
+
+## API Routes
+
+The app uses Next.js API routes for serverless functions:
+
+- `POST /api/login` - User authentication
+- `POST /api/register` - User registration
+- `GET /api/generators` - Fetch generators (with role-based filtering)
+- `POST /api/generators/[id]/[action]` - Start/stop generators
+- `GET /api/zones` - Fetch zones
+- `POST /api/zones/complete` - Create new zone with generators
+- `PUT /api/zones/[id]` - Update zone
+- `GET /api/users` - Fetch users (admin only)
+- `GET /api/logs` - Fetch activity logs (with role-based filtering)
 
 ## Project Structure
 
 ```
-Generator Log/
-├── app/                    # Next.js App Router
-│   ├── components/        # React components
-│   ├── contexts/          # React contexts
-│   ├── globals.css        # Global styles
-│   ├── layout.js          # Root layout
-│   ├── login/             # Login page
-│   ├── page.js            # Home page
-│   ├── providers.js       # Context providers
-│   └── register/          # Register page
-├── server.js              # Unified Express.js + Next.js server
-├── supabase-schema.sql    # Database schema
-├── package.json           # Dependencies and scripts
-└── next.config.js         # Next.js configuration
+app/
+├── api/                    # Next.js API routes
+│   ├── login/
+│   ├── register/
+│   ├── generators/
+│   ├── zones/
+│   ├── users/
+│   └── logs/
+├── components/             # React components
+│   ├── Login.js
+│   ├── Register.js
+│   ├── Dashboard.js
+│   ├── AdminDashboard.js
+│   └── Navigation.js
+├── contexts/              # React contexts
+│   ├── AuthContext.js
+│   └── SocketContext.js
+├── login/                 # Login page
+├── register/              # Register page
+├── globals.css            # Global styles
+├── layout.js              # Root layout
+├── page.js                # Home page
+└── providers.js           # Context providers
 ```
 
-## API Endpoints
-
-All API endpoints are handled by the unified server:
-
-- `POST /api/register` - User registration
-- `POST /api/login` - User authentication
-- `GET /api/generators` - Generator management
-- `POST /api/generators/:id/:action` - Start/stop generators
-- `GET /api/zones` - Zone management
-- `POST /api/zones/complete` - Create zones with generators
-- `PUT /api/zones/:id` - Update zones
-- `GET /api/users` - User management (admin only)
-- `GET /api/logs` - Activity logs
-
-## Development
-
-```bash
-npm run dev
-```
-
-This starts the unified server on port 3000 with:
-- Next.js frontend
-- Express.js API routes
-- Socket.IO real-time communication
-- Hot reloading for development
-
-## Production Deployment
-
-### Option 1: Vercel (Recommended)
-```bash
-npm run build
-npm start
-```
-
-### Option 2: Any Node.js Hosting
-```bash
-npm run build
-NODE_ENV=production npm start
-```
-
-### Option 3: Docker
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-## Key Features
+## Features by Role
 
 ### Operator Dashboard
-- View assigned generators
+- View assigned generators only
 - Start/stop generators
-- Real-time status updates
-- Activity history
+- View activity logs
+- Location tracking for actions
 
 ### Administrator Dashboard
-- Manage all zones and generators
-- Create new zones with multiple generators
+- View all generators and zones
+- Create and edit zones
 - Assign operators to zones
-- View comprehensive activity logs
-- Real-time monitoring of all generators
+- Monitor all activity
+- User management
 
-### Real-time Features
-- Live generator status updates
-- Instant notifications for actions
-- Socket.IO integration for real-time communication
+## Real-time Updates
 
-### Unified Benefits
-- **Single Deployment**: No need for separate frontend/backend hosting
-- **Simplified Setup**: One command to start everything
-- **Better Performance**: No CORS issues or network latency
-- **Easier Scaling**: Single server to scale
-- **Cost Effective**: Only one hosting service needed
+The app uses polling to fetch updates every 10 seconds, which works well with Vercel's serverless architecture.
 
-## Environment Variables
+## Security
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key | Yes |
-| `JWT_SECRET` | Secret key for JWT tokens | Yes |
-| `NEXT_PUBLIC_APP_URL` | Your app URL (for production) | No |
-| `PORT` | Server port (default: 3000) | No |
+- JWT-based authentication
+- Role-based access control
+- Password hashing with bcrypt
+- Environment variable protection
+- Supabase Row Level Security (RLS)
 
 ## Contributing
 
