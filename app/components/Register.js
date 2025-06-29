@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
 
@@ -122,7 +124,7 @@ const Register = () => {
         </button>
       </form>
       <div className="auth-links">
-        <p>Already have an account? <Link to="/login">Login here</Link></p>
+        <p>Already have an account? <Link href="/login">Login here</Link></p>
       </div>
     </div>
   );

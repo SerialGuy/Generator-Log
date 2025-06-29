@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useContext } from 'react';
+'use client';
+
+import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
-import { AuthContext, SocketContext } from '../App';
+import { useAuth } from '../contexts/AuthContext';
+import { useSocket } from '../contexts/SocketContext';
 
 const Dashboard = () => {
-  const { user } = useContext(AuthContext);
-  const socket = useContext(SocketContext);
+  const { user } = useAuth();
+  const socket = useSocket();
   const [generators, setGenerators] = useState([]);
   const [zones, setZones] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -104,7 +107,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
         <h3 style={{ marginBottom: '15px' }}>Location Input</h3>
         <div className="form-group">
           <input
@@ -117,22 +120,30 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
         <h3 style={{ marginBottom: '20px' }}>Your Generators</h3>
         {generators.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#666' }}>
             No generators assigned to you yet. Contact an administrator.
           </p>
         ) : (
-          <div className="grid grid-2">
+          <div className="grid-2">
             {generators.map(generator => (
-              <div key={generator.id} className="generator-card">
+              <div key={generator.id} className={`generator-card ${generator.status}`}>
                 <div className="generator-header">
                   <div>
                     <div className="generator-name">{generator.name}</div>
-                    <div className="generator-zone">Zone: {getZoneName(generator.zoneId)}</div>
+                    <div className="generator-zone">Zone: {getZoneName(generator.zone_id)}</div>
                   </div>
-                  <span className={`status-badge status-${generator.status}`}>
+                  <span className={`status-badge status-${generator.status}`} style={{
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    textTransform: 'uppercase',
+                    backgroundColor: generator.status === 'running' ? '#d4edda' : '#f8d7da',
+                    color: generator.status === 'running' ? '#155724' : '#721c24'
+                  }}>
                     {generator.status}
                   </span>
                 </div>
@@ -159,7 +170,7 @@ const Dashboard = () => {
         )}
       </div>
 
-      <div className="card">
+      <div className="card" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
         <h3 style={{ marginBottom: '20px' }}>Recent Activity</h3>
         {logs.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#666' }}>No activity yet.</p>
@@ -177,8 +188,8 @@ const Dashboard = () => {
             <tbody>
               {logs.slice(0, 10).map(log => (
                 <tr key={log.id}>
-                  <td>{log.generatorName || log.generatorId}</td>
-                  <td>{log.zoneName || getZoneName(log.zoneId)}</td>
+                  <td>{log.generator_name || log.generator_id}</td>
+                  <td>{log.zone_name || getZoneName(log.zone_id)}</td>
                   <td className={`action-${log.action}`}>
                     {log.action.toUpperCase()}
                   </td>

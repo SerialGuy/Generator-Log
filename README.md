@@ -1,228 +1,182 @@
-# Generator Log Application
+# Generator Log - Unified Next.js App
 
-A web-based application for managing generator operations with operator registration, zone management, and real-time monitoring capabilities.
+A modern web-based generator logging application built with Next.js and Express.js, featuring real-time monitoring and management of generators with operator and administrator roles. **Everything runs on a single server!**
 
 ## Features
 
-### 🔐 Authentication & User Management
-- **Operator Registration**: New operators can register with their details
+- **Unified Deployment**: Frontend, backend, and Socket.IO all run on one server
+- **Real-time Updates**: Live generator status updates using Socket.IO
 - **Role-based Access**: Separate dashboards for operators and administrators
-- **Secure Login**: JWT-based authentication with password hashing
+- **Zone Management**: Organize generators by zones with assigned operators
+- **Activity Logging**: Comprehensive logging of all generator actions
+- **Responsive Design**: Modern UI that works on desktop and mobile devices
+- **Authentication**: Secure login system with JWT tokens
 
-### 🏭 Generator Management
-- **Zone-based Organization**: Generators are organized by zones
-- **Start/Stop Logging**: Operators can log generator start and stop actions
-- **Location Tracking**: Optional location stamping for each action
-- **Timestamp Recording**: Automatic timestamp recording for all actions
+## Tech Stack
 
-### 👥 Operator Features
-- **Assigned Zones**: Operators are assigned to specific zones
-- **Generator Control**: Start and stop generators in their assigned zones
-- **Activity History**: View their own activity logs
-- **Real-time Updates**: Live updates when generators change status
+- **Full Stack**: Next.js 14 + Express.js + Socket.IO
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: JWT tokens
+- **Real-time**: Socket.IO
+- **Styling**: CSS with responsive design
+- **Notifications**: React Hot Toast
 
-### 👨‍💼 Administrator Features
-- **Real-time Dashboard**: Live monitoring of all generators
-- **Zone Management**: Assign operators to zones
-- **User Management**: View all registered operators
-- **Comprehensive Logs**: View all activity across the system
-- **Statistics**: Overview of system status and metrics
+## Prerequisites
 
-### 🔄 Real-time Updates
-- **Socket.IO Integration**: Live updates across all connected clients
-- **Instant Notifications**: Toast notifications for status changes
-- **Live Status Display**: Real-time generator status updates
-
-## Technology Stack
-
-### Backend
-- **Node.js** with Express.js
-- **Socket.IO** for real-time communication
-- **JWT** for authentication
-- **bcryptjs** for password hashing
-- **UUID** for unique identifiers
-
-### Frontend
-- **React.js** with functional components and hooks
-- **React Router** for navigation
-- **Axios** for API communication
-- **Socket.IO Client** for real-time updates
-- **React Hot Toast** for notifications
-
-## Installation & Setup
-
-### Prerequisites
-- Node.js (v14 or higher)
+- Node.js 18+ 
 - npm or yarn
+- Supabase account and project
 
-### 1. Clone and Install Dependencies
-```bash
-# Install server dependencies
-npm install
+## Installation
 
-# Install client dependencies
-cd client
-npm install
-cd ..
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd generator-log-nextjs
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up Supabase**
+   - Create a new Supabase project
+   - Run the SQL schema from `supabase-schema.sql` in your Supabase SQL editor
+   - Get your Supabase URL and anon key
+
+4. **Configure environment variables**
+   Create a `.env.local` file in the root directory:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   JWT_SECRET=your_jwt_secret_key
+   NEXT_PUBLIC_APP_URL=https://your-domain.com
+   PORT=3000
+   ```
+
+5. **Start the unified server**
+   ```bash
+   npm run dev
+   ```
+
+6. **Open your browser**
+   Navigate to `http://localhost:3000`
+
+## Default Users
+
+The application creates default users on first run:
+
+- **Administrator**: `admin` / `admin123`
+- **Operator**: `operator` / `operator123`
+
+## Project Structure
+
 ```
-
-### 2. Environment Setup
-Create a `.env` file in the root directory:
-```env
-JWT_SECRET=your-secret-key-here
-PORT=5000
+Generator Log/
+├── app/                    # Next.js App Router
+│   ├── components/        # React components
+│   ├── contexts/          # React contexts
+│   ├── globals.css        # Global styles
+│   ├── layout.js          # Root layout
+│   ├── login/             # Login page
+│   ├── page.js            # Home page
+│   ├── providers.js       # Context providers
+│   └── register/          # Register page
+├── server.js              # Unified Express.js + Next.js server
+├── supabase-schema.sql    # Database schema
+├── package.json           # Dependencies and scripts
+└── next.config.js         # Next.js configuration
 ```
-
-### 3. Start the Application
-```bash
-# Start both server and client in development mode
-npm run dev
-
-# Or start them separately:
-npm run server    # Starts backend on port 5000
-npm run client    # Starts frontend on port 3000
-```
-
-### 4. Access the Application
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:5000
-
-## Default Credentials
-
-### Administrator Account
-- **Username**: admin
-- **Password**: admin123
-
-## Usage Guide
-
-### For Operators
-
-1. **Registration**: New operators can register at `/register`
-2. **Login**: Use your credentials to access the operator dashboard
-3. **Generator Control**: 
-   - View assigned generators
-   - Enter your location (optional)
-   - Click "Start Generator" or "Stop Generator"
-4. **Activity Tracking**: View your recent activity in the dashboard
-
-### For Administrators
-
-1. **Login**: Use admin credentials to access the administrator dashboard
-2. **Zone Management**:
-   - View all zones and their current assignments
-   - Assign operators to zones using the dropdown
-3. **Real-time Monitoring**:
-   - View live status of all generators
-   - Monitor operator activity
-4. **User Management**:
-   - View all registered operators
-   - See operator assignments and details
 
 ## API Endpoints
 
-### Authentication
-- `POST /api/register` - Register new operator
-- `POST /api/login` - User login
+All API endpoints are handled by the unified server:
 
-### Generators
-- `GET /api/generators` - Get generators (filtered by user role)
-- `POST /api/generators/:id/start` - Start generator
-- `POST /api/generators/:id/stop` - Stop generator
+- `POST /api/register` - User registration
+- `POST /api/login` - User authentication
+- `GET /api/generators` - Generator management
+- `POST /api/generators/:id/:action` - Start/stop generators
+- `GET /api/zones` - Zone management
+- `POST /api/zones/complete` - Create zones with generators
+- `PUT /api/zones/:id` - Update zones
+- `GET /api/users` - User management (admin only)
+- `GET /api/logs` - Activity logs
 
-### Zones
-- `GET /api/zones` - Get all zones
-- `POST /api/zones/:id/assign-operator` - Assign operator to zone
+## Development
 
-### Users & Logs
-- `GET /api/users` - Get all users (admin only)
-- `GET /api/logs` - Get activity logs (filtered by user role)
-
-## Data Structure
-
-### Users
-```javascript
-{
-  id: "uuid",
-  username: "string",
-  password: "hashed",
-  name: "string",
-  email: "string",
-  role: "operator" | "administrator"
-}
+```bash
+npm run dev
 ```
 
-### Zones
-```javascript
-{
-  id: "uuid",
-  name: "string",
-  location: "string",
-  assignedOperator: "operator-id" | null
-}
-```
-
-### Generators
-```javascript
-{
-  id: "uuid",
-  name: "string",
-  zoneId: "zone-id",
-  status: "running" | "offline",
-  lastOperator: "operator-id" | null
-}
-```
-
-### Logs
-```javascript
-{
-  id: "uuid",
-  generatorId: "generator-id",
-  operatorId: "operator-id",
-  operatorName: "string",
-  action: "start" | "stop",
-  timestamp: "ISO-string",
-  location: "string",
-  status: "running" | "offline"
-}
-```
-
-## Security Features
-
-- **Password Hashing**: All passwords are hashed using bcrypt
-- **JWT Authentication**: Secure token-based authentication
-- **Role-based Access**: API endpoints protected by user roles
-- **Input Validation**: Server-side validation for all inputs
-- **CORS Protection**: Configured CORS for security
-
-## Real-time Features
-
-- **Live Updates**: Generator status changes are broadcast to all connected clients
-- **Instant Notifications**: Toast notifications for status changes
-- **Real-time Dashboard**: Administrator dashboard updates in real-time
-- **Socket Connection**: Automatic reconnection handling
+This starts the unified server on port 3000 with:
+- Next.js frontend
+- Express.js API routes
+- Socket.IO real-time communication
+- Hot reloading for development
 
 ## Production Deployment
 
-### Environment Variables
-```env
-NODE_ENV=production
-JWT_SECRET=your-secure-secret-key
-PORT=5000
-```
-
-### Build Process
+### Option 1: Vercel (Recommended)
 ```bash
-# Build the React application
 npm run build
-
-# The built files will be in client/build/
+npm start
 ```
 
-### Database Integration
-For production use, replace the in-memory storage with a database:
-- **MongoDB** with Mongoose
-- **PostgreSQL** with Sequelize
-- **MySQL** with Sequelize
+### Option 2: Any Node.js Hosting
+```bash
+npm run build
+NODE_ENV=production npm start
+```
+
+### Option 3: Docker
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+## Key Features
+
+### Operator Dashboard
+- View assigned generators
+- Start/stop generators
+- Real-time status updates
+- Activity history
+
+### Administrator Dashboard
+- Manage all zones and generators
+- Create new zones with multiple generators
+- Assign operators to zones
+- View comprehensive activity logs
+- Real-time monitoring of all generators
+
+### Real-time Features
+- Live generator status updates
+- Instant notifications for actions
+- Socket.IO integration for real-time communication
+
+### Unified Benefits
+- **Single Deployment**: No need for separate frontend/backend hosting
+- **Simplified Setup**: One command to start everything
+- **Better Performance**: No CORS issues or network latency
+- **Easier Scaling**: Single server to scale
+- **Cost Effective**: Only one hosting service needed
+
+## Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | Yes |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key | Yes |
+| `JWT_SECRET` | Secret key for JWT tokens | Yes |
+| `NEXT_PUBLIC_APP_URL` | Your app URL (for production) | No |
+| `PORT` | Server port (default: 3000) | No |
 
 ## Contributing
 
@@ -234,8 +188,4 @@ For production use, replace the in-memory storage with a database:
 
 ## License
 
-MIT License - see LICENSE file for details
-
-## Support
-
-For support or questions, please open an issue in the repository. 
+MIT License - see LICENSE file for details 

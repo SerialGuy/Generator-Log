@@ -1,8 +1,9 @@
-import React, { useContext } from 'react';
-import { AuthContext } from '../App';
+'use client';
+
+import { useAuth } from '../contexts/AuthContext';
 
 const Navigation = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout } = useAuth();
 
   return (
     <nav style={{

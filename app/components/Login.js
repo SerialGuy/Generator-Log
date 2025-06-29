@@ -1,8 +1,10 @@
-import React, { useState, useContext } from 'react';
-import { Link } from 'react-router-dom';
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
-import { AuthContext } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -10,7 +12,7 @@ const Login = () => {
     password: ''
   });
   const [loading, setLoading] = useState(false);
-  const { login } = useContext(AuthContext);
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     setFormData({
@@ -73,7 +75,7 @@ const Login = () => {
         </button>
       </form>
       <div className="auth-links">
-        <p>Don't have an account? <Link to="/register">Register here</Link></p>
+        <p>Don't have an account? <Link href="/register">Register here</Link></p>
         <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
           Demo admin: admin / admin123
         </p>
