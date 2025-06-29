@@ -167,7 +167,8 @@ export default function AdminDashboard() {
 
   const getZoneLogs = (zoneId) => {
     const zoneGenerators = generators.filter(g => g.zone_id === zoneId);
-    return logs.filter(log => zoneGenerators.some(g => g.id === log.generator_id));
+    const zoneGeneratorIds = zoneGenerators.map(g => g.id);
+    return logs.filter(log => zoneGeneratorIds.includes(log.generators?.id || log.generator_id));
   };
 
   if (loading) {
@@ -224,33 +225,50 @@ export default function AdminDashboard() {
       <div className="grid-2">
         <div className="card" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
           <h3 style={{ marginBottom: '20px', color: '#28a745' }}>🟢 Running Generators ({runningGenerators.length})</h3>
-          {runningGenerators.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#666' }}>No generators currently running</p>
+          {zones.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#666' }}>No zones available</p>
           ) : (
-            <div className="grid-2">
-              {runningGenerators.map(generator => (
-                <div key={generator.id} className="generator-card running">
-                  <div className="generator-header">
-                    <div>
-                      <div className="generator-name">{generator.name}</div>
-                      <div className="generator-zone">Zone: {getZoneName(generator.zone_id)}</div>
-                      <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                        Operator: {getOperatorName(generator.last_operator_id)}
-                      </div>
-                    </div>
-                    <span className="status-badge status-running" style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      textTransform: 'uppercase',
-                      backgroundColor: '#d4edda',
-                      color: '#155724'
-                    }}>Running</span>
+            zones.map(zone => {
+              const zoneRunning = runningGenerators.filter(g => g.zone_id === zone.id);
+              if (zoneRunning.length === 0) return null;
+              return (
+                <div key={zone.id} style={{ marginBottom: '10px', border: '1px solid #eee', borderRadius: 6 }}>
+                  <div
+                    style={{ cursor: 'pointer', padding: '10px', background: '#f8f9fa', borderRadius: 6, fontWeight: 600 }}
+                    onClick={() => setCollapsedZones(z => ({ ...z, [`running-${zone.id}`]: !z[`running-${zone.id}`] }))}
+                  >
+                    {zone.name} ({zoneRunning.length})
+                    <span style={{ float: 'right' }}>{collapsedZones[`running-${zone.id}`] ? '▲' : '▼'}</span>
                   </div>
+                  {collapsedZones[`running-${zone.id}`] && (
+                    <div style={{ padding: '10px 20px' }}>
+                      {zoneRunning.map(generator => (
+                        <div key={generator.id} className="generator-card running">
+                          <div className="generator-header">
+                            <div>
+                              <div className="generator-name">{generator.name}</div>
+                              <div className="generator-zone">Zone: {getZoneName(generator.zone_id)}</div>
+                              <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                                Operator: {getOperatorName(generator.last_operator_id)}
+                              </div>
+                            </div>
+                            <span className="status-badge status-running" style={{
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              textTransform: 'uppercase',
+                              backgroundColor: '#d4edda',
+                              color: '#155724'
+                            }}>Running</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })
           )}
         </div>
 
@@ -266,12 +284,12 @@ export default function AdminDashboard() {
                 <div key={zone.id} style={{ marginBottom: '10px', border: '1px solid #eee', borderRadius: 6 }}>
                   <div
                     style={{ cursor: 'pointer', padding: '10px', background: '#f8f9fa', borderRadius: 6, fontWeight: 600 }}
-                    onClick={() => setCollapsedZones(z => ({ ...z, [zone.id]: !z[zone.id] }))}
+                    onClick={() => setCollapsedZones(z => ({ ...z, [`stopped-${zone.id}`]: !z[`stopped-${zone.id}`] }))}
                   >
                     {zone.name} ({zoneStopped.length})
-                    <span style={{ float: 'right' }}>{collapsedZones[zone.id] ? '▲' : '▼'}</span>
+                    <span style={{ float: 'right' }}>{collapsedZones[`stopped-${zone.id}`] ? '▲' : '▼'}</span>
                   </div>
-                  {collapsedZones[zone.id] && (
+                  {collapsedZones[`stopped-${zone.id}`] && (
                     <div style={{ padding: '10px 20px' }}>
                       {zoneStopped.map(generator => (
                         <div key={generator.id} className="generator-card stopped">
