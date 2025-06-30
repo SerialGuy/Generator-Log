@@ -50,6 +50,7 @@ export async function GET(request) {
           action,
           timestamp,
           operator_name,
+          generator_id,
           generators (
             name,
             zones (
@@ -78,6 +79,7 @@ export async function GET(request) {
           action,
           timestamp,
           operator_name,
+          generator_id,
           generators (
             name,
             zones (
@@ -115,5 +117,80 @@ export async function GET(request) {
       { error: 'Failed to fetch logs' },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request) {
+  try {
+    const user = authenticateToken(request);
+    if (user.role !== 'administrator') {
+      return NextResponse.json({ error: 'Only admin can add logs manually' }, { status: 403 });
+    }
+    const body = await request.json();
+    const { generator_id, operator_id, action, timestamp } = body;
+    if (!generator_id || !operator_id || !action || !timestamp) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    // Get operator name
+    const { data: operator } = await supabase.from('users').select('name').eq('id', operator_id).single();
+    // Insert log
+    const { data, error } = await supabase.from('logs').insert([
+      {
+        generator_id,
+        operator_id,
+        operator_name: operator?.name || '',
+        action,
+        timestamp
+      }
+    ]).select('*').single();
+    if (error) {
+      return NextResponse.json({ error: 'Failed to add log' }, { status: 500 });
+    }
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to add log' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const user = authenticateToken(request);
+    if (user.role !== 'administrator') {
+      return NextResponse.json({ error: 'Only admin can delete logs' }, { status: 403 });
+    }
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Missing log id' }, { status: 400 });
+    }
+    const { error } = await supabase.from('logs').delete().eq('id', id);
+    if (error) {
+      return NextResponse.json({ error: 'Failed to delete log' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to delete log' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request) {
+  try {
+    const user = authenticateToken(request);
+    if (user.role !== 'administrator') {
+      return NextResponse.json({ error: 'Only admin can update logs' }, { status: 403 });
+    }
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Missing log id' }, { status: 400 });
+    }
+    const body = await request.json();
+    const { error } = await supabase.from('logs').update(body).eq('id', id);
+    if (error) {
+      return NextResponse.json({ error: 'Failed to update log' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to update log' }, { status: 500 });
   }
 } 

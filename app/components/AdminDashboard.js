@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
+import * as XLSX from 'xlsx';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -21,6 +22,18 @@ export default function AdminDashboard() {
     generatorsByType: { '65': 0, '125': 0, '250': 0, '320': 0, '500': 0 },
     operatorId: ''
   });
+  const [showAddLogModal, setShowAddLogModal] = useState(false);
+  const [addLogForm, setAddLogForm] = useState({
+    generatorId: '',
+    operatorId: '',
+    action: '',
+    timestamp: ''
+  });
+  const [addLogLoading, setAddLogLoading] = useState(false);
+  const downloadRef = useRef(null);
+  const [editLogModal, setEditLogModal] = useState({ open: false, log: null });
+  const [editLogForm, setEditLogForm] = useState({ generatorId: '', operatorId: '', action: '', timestamp: '' });
+  const [editLogLoading, setEditLogLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -169,6 +182,100 @@ export default function AdminDashboard() {
     const zoneGenerators = generators.filter(g => g.zone_id === zoneId);
     const zoneGeneratorIds = zoneGenerators.map(g => g.id);
     return logs.filter(log => zoneGeneratorIds.includes(log.generators?.id || log.generator_id));
+  };
+
+  // Download zone logs as Excel
+  const handleDownloadZoneLogs = (zoneId) => {
+    const zone = zones.find(z => z.id === zoneId);
+    const zoneLogs = getZoneLogs(zoneId);
+    const data = zoneLogs.map(log => ({
+      Generator: log.generators?.name || 'Unknown Generator',
+      Operator: log.operator_name,
+      Action: log.action,
+      Timestamp: new Date(log.timestamp).toLocaleString()
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Logs');
+    XLSX.writeFile(wb, `${zone?.name || 'zone'}-logs.xlsx`);
+  };
+
+  // Add previous log
+  const handleAddLog = async () => {
+    setAddLogLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          generator_id: addLogForm.generatorId,
+          operator_id: addLogForm.operatorId,
+          action: addLogForm.action,
+          timestamp: addLogForm.timestamp
+        })
+      });
+      if (response.ok) {
+        setShowAddLogModal(false);
+        setAddLogForm({ generatorId: '', operatorId: '', action: '', timestamp: '' });
+        fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to add log');
+      }
+    } catch (error) {
+      alert('Failed to add log');
+    } finally {
+      setAddLogLoading(false);
+    }
+  };
+
+  // Delete log
+  const handleDeleteLog = async (logId) => {
+    if (!window.confirm('Are you sure you want to delete this log?')) return;
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/logs?id=${logId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) fetchData();
+    else alert('Failed to delete log');
+  };
+
+  // Edit log
+  const openEditLogModal = (log) => {
+    setEditLogForm({
+      generatorId: log.generator_id,
+      operatorId: users.find(u => u.name === log.operator_name)?.id || '',
+      action: log.action,
+      timestamp: log.timestamp ? new Date(log.timestamp).toISOString().slice(0,16) : ''
+    });
+    setEditLogModal({ open: true, log });
+  };
+
+  const handleEditLog = async () => {
+    setEditLogLoading(true);
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/logs?id=${editLogModal.log.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        generator_id: editLogForm.generatorId,
+        operator_id: editLogForm.operatorId,
+        action: editLogForm.action,
+        timestamp: editLogForm.timestamp
+      })
+    });
+    setEditLogLoading(false);
+    if (res.ok) {
+      setEditLogModal({ open: false, log: null });
+      fetchData();
+    } else {
+      alert('Failed to update log');
+    }
   };
 
   if (loading) {
@@ -375,6 +482,9 @@ export default function AdminDashboard() {
       {/* Activity Logs by Zone */}
       <div className="card" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
         <h3 style={{ marginBottom: '20px' }}>Activity Logs by Zone</h3>
+        <button className="btn btn-primary" style={{ marginBottom: 16 }} onClick={() => setShowAddLogModal(true)}>
+          + Add Previous Log
+        </button>
         {zones.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#666' }}>No zones to display logs for</p>
         ) : (
@@ -382,34 +492,42 @@ export default function AdminDashboard() {
             const zoneLogs = getZoneLogs(zone.id);
             return (
               <div key={zone.id} className="zone-logs">
-                <h4>{zone.name} - {zoneLogs.length} activities</h4>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h4>{zone.name} - {zoneLogs.length} activities</h4>
+                  <button className="btn btn-success" onClick={() => handleDownloadZoneLogs(zone.id)}>
+                    Download Excel
+                  </button>
+                </div>
                 {zoneLogs.length === 0 ? (
                   <p style={{ color: '#666', fontStyle: 'italic' }}>No activity in this zone</p>
                 ) : (
-                  <table className="log-table">
-                    <thead>
-                      <tr>
-                        <th>Generator</th>
-                        <th>Operator</th>
-                        <th>Action</th>
-                        <th>Timestamp</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {zoneLogs.slice(0, 5).map(log => (
-                        <tr key={log.id}>
-                          <td>{log.generators?.name || 'Unknown Generator'}</td>
-                          <td>{log.operator_name}</td>
-                          <td className={`action-${log.action}`}>
-                            {log.action.toUpperCase()}
-                          </td>
-                          <td className="timestamp">
-                            {new Date(log.timestamp).toLocaleString()}
-                          </td>
+                  <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: 16 }}>
+                    <table className="log-table">
+                      <thead>
+                        <tr>
+                          <th>Generator</th>
+                          <th>Operator</th>
+                          <th>Action</th>
+                          <th>Timestamp</th>
+                          <th>Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {zoneLogs.map(log => (
+                          <tr key={log.id}>
+                            <td>{log.generators?.name || 'Unknown Generator'}</td>
+                            <td>{log.operator_name}</td>
+                            <td className={`action-${log.action}`}>{log.action.toUpperCase()}</td>
+                            <td className="timestamp">{new Date(log.timestamp).toLocaleString()}</td>
+                            <td>
+                              <button className="btn btn-sm btn-warning" onClick={() => openEditLogModal(log)} style={{ marginRight: 8 }}>Edit</button>
+                              <button className="btn btn-sm btn-danger" onClick={() => handleDeleteLog(log.id)}>Delete</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             );
@@ -537,6 +655,96 @@ export default function AdminDashboard() {
               </button>
               <button className="btn btn-primary" onClick={handleUpdateZone}>
                 Update Zone
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Previous Log Modal */}
+      {showAddLogModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Add Previous Log</h3>
+            <div className="form-group">
+              <label>Generator</label>
+              <select className="form-control" value={addLogForm.generatorId} onChange={e => setAddLogForm({ ...addLogForm, generatorId: e.target.value })}>
+                <option value="">Select Generator</option>
+                {generators.map(g => (
+                  <option key={g.id} value={g.id}>{g.name} ({getZoneName(g.zone_id)})</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Operator</label>
+              <select className="form-control" value={addLogForm.operatorId} onChange={e => setAddLogForm({ ...addLogForm, operatorId: e.target.value })}>
+                <option value="">Select Operator</option>
+                {users.filter(u => u.role === 'operator').map(u => (
+                  <option key={u.id} value={u.id}>{u.name} ({u.username})</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Action</label>
+              <select className="form-control" value={addLogForm.action} onChange={e => setAddLogForm({ ...addLogForm, action: e.target.value })}>
+                <option value="">Select Action</option>
+                <option value="start">Start</option>
+                <option value="stop">Stop</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Timestamp</label>
+              <input type="datetime-local" className="form-control" value={addLogForm.timestamp} onChange={e => setAddLogForm({ ...addLogForm, timestamp: e.target.value })} />
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowAddLogModal(false)} disabled={addLogLoading}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleAddLog} disabled={addLogLoading}>
+                {addLogLoading ? 'Adding...' : 'Add Log'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Log Modal */}
+      {editLogModal.open && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Edit Log</h3>
+            <div className="form-group">
+              <label>Generator</label>
+              <select className="form-control" value={editLogForm.generatorId} onChange={e => setEditLogForm({ ...editLogForm, generatorId: e.target.value })}>
+                <option value="">Select Generator</option>
+                {generators.map(g => (
+                  <option key={g.id} value={g.id}>{g.name} ({getZoneName(g.zone_id)})</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Operator</label>
+              <select className="form-control" value={editLogForm.operatorId} onChange={e => setEditLogForm({ ...editLogForm, operatorId: e.target.value })}>
+                <option value="">Select Operator</option>
+                {users.filter(u => u.role === 'operator').map(u => (
+                  <option key={u.id} value={u.id}>{u.name} ({u.username})</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Action</label>
+              <select className="form-control" value={editLogForm.action} onChange={e => setEditLogForm({ ...editLogForm, action: e.target.value })}>
+                <option value="">Select Action</option>
+                <option value="start">Start</option>
+                <option value="stop">Stop</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Timestamp</label>
+              <input type="datetime-local" className="form-control" value={editLogForm.timestamp} onChange={e => setEditLogForm({ ...editLogForm, timestamp: e.target.value })} />
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setEditLogModal({ open: false, log: null })} disabled={editLogLoading}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleEditLog} disabled={editLogLoading}>
+                {editLogLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
