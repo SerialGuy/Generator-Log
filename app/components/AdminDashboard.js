@@ -166,15 +166,20 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="h-5 w-5" />
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-auto max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+          <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+          >
+            <X className="h-6 w-6" />
           </button>
         </div>
-        {children}
+        <div className="p-6">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -204,12 +209,11 @@ export default function AdminDashboard() {
   
   // Form states
   const [generatorForm, setGeneratorForm] = useState({
+    name: '',
     kva: '',
-    zone_id: '',
     fuel_type: 'diesel',
     current_fuel_level: '',
-    fuel_capacity_liters: '',
-    status: 'offline'
+    fuel_capacity_liters: ''
   });
   
   const [zoneForm, setZoneForm] = useState({
@@ -381,12 +385,11 @@ export default function AdminDashboard() {
   const handleAddGenerator = () => {
     setEditingItem(null);
     setGeneratorForm({
+      name: '',
       kva: '',
-      zone_id: '',
       fuel_type: 'diesel',
       current_fuel_level: '',
-      fuel_capacity_liters: '',
-      status: 'offline'
+      fuel_capacity_liters: ''
     });
     setShowGeneratorModal(true);
   };
@@ -470,13 +473,14 @@ export default function AdminDashboard() {
       const url = editingItem ? '/api/generators' : '/api/generators';
       const method = editingItem ? 'PUT' : 'POST';
       
-      // Auto-generate name for new generators
+      // Auto-generate name for new generators and set default status
       let generatorData = { ...generatorForm };
       if (!editingItem) {
         // Count existing generators with same KVA to get sequence
         const sameKvaGenerators = generators.filter(g => g.kva === parseInt(generatorForm.kva));
         const sequence = sameKvaGenerators.length + 1;
         generatorData.name = `${generatorForm.kva}KVA-${sequence}`;
+        generatorData.status = 'offline'; // Set default status for new generators
       } else {
         generatorData.id = editingItem.id;
       }
@@ -601,12 +605,11 @@ export default function AdminDashboard() {
     setEditingItem(item);
     if (type === 'generator') {
       setGeneratorForm({
+        name: item.name,
         kva: item.kva,
-        zone_id: item.zone_id,
         fuel_type: item.fuel_type,
         current_fuel_level: item.current_fuel_level,
-        fuel_capacity_liters: item.fuel_capacity_liters,
-        status: item.status
+        fuel_capacity_liters: item.fuel_capacity_liters
       });
       setShowGeneratorModal(true);
     } else if (type === 'zone') {
@@ -723,10 +726,10 @@ export default function AdminDashboard() {
               <span className="text-sm font-medium text-blue-900">Add Generator</span>
             </button>
             <button 
-              onClick={handleCreateZone}
+              onClick={handleAddClient}
               className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
             >
-              <MapPin className="h-5 w-5 text-green-600" />
+              <Users className="h-5 w-5 text-green-600" />
               <span className="text-sm font-medium text-green-900">Add Client</span>
             </button>
             <button 
@@ -1044,51 +1047,49 @@ export default function AdminDashboard() {
         onClose={() => setShowGeneratorModal(false)}
         title={editingItem ? 'Edit Generator' : 'Add Generator'}
       >
-        <form onSubmit={handleGeneratorSubmit} className="space-y-4">
+        <form onSubmit={handleGeneratorSubmit} className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center">
+              <Zap className="h-5 w-5 text-blue-600 mr-2" />
+              <p className="text-sm text-blue-800 font-medium">
+                Generator will be automatically assigned a unique name and set to offline status
+              </p>
+            </div>
+          </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Model Name</label>
             <input
               type="text"
               value={generatorForm.name}
               onChange={(e) => setGeneratorForm({...generatorForm, name: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              placeholder="Enter generator model name"
               required
             />
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">KVA</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">KVA Rating</label>
             <select
               value={generatorForm.kva}
               onChange={(e) => setGeneratorForm({...generatorForm, kva: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               required
             >
-              <option value="">Select KVA</option>
+              <option value="">Select KVA Rating</option>
               {kvaOptions.map(kva => (
                 <option key={kva} value={kva}>{kva} KVA</option>
               ))}
             </select>
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Zone</label>
-            <select
-              value={generatorForm.zone_id}
-              onChange={(e) => setGeneratorForm({...generatorForm, zone_id: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="">Select Zone</option>
-              {zones.map(zone => (
-                <option key={zone.id} value={zone.id}>{zone.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Fuel Type</label>
             <select
               value={generatorForm.fuel_type}
               onChange={(e) => setGeneratorForm({...generatorForm, fuel_type: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               required
             >
               <option value="diesel">Diesel</option>
@@ -1096,53 +1097,47 @@ export default function AdminDashboard() {
               <option value="hybrid">Hybrid</option>
             </select>
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Current Fuel Level</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Current Fuel Level (Liters)</label>
             <input
               type="number"
               value={generatorForm.current_fuel_level}
               onChange={(e) => setGeneratorForm({...generatorForm, current_fuel_level: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              placeholder="Enter current fuel level"
+              min="0"
               required
             />
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Capacity (Liters)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Fuel Capacity (Liters)</label>
             <input
               type="number"
               value={generatorForm.fuel_capacity_liters}
               onChange={(e) => setGeneratorForm({...generatorForm, fuel_capacity_liters: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              placeholder="Enter fuel tank capacity"
+              min="0"
               required
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={generatorForm.status}
-              onChange={(e) => setGeneratorForm({...generatorForm, status: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="running">Running</option>
-              <option value="offline">Offline</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="fault">Fault</option>
-            </select>
-          </div>
-          <div className="flex justify-end space-x-3 pt-4">
+          
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={() => setShowGeneratorModal(false)}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-6 py-2.5 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
             >
-              {editingItem ? 'Update' : 'Create'}
+              <Plus className="h-4 w-4" />
+              <span>{editingItem ? 'Update' : 'Create'} Generator</span>
             </button>
           </div>
         </form>
@@ -1317,49 +1312,65 @@ export default function AdminDashboard() {
         onClose={() => setShowClientModal(false)}
         title="Add Client"
       >
-        <form onSubmit={handleClientSubmit} className="space-y-4">
+        <form onSubmit={handleClientSubmit} className="space-y-6">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center">
+              <Users className="h-5 w-5 text-green-600 mr-2" />
+              <p className="text-sm text-green-800 font-medium">
+                Create a new client to manage their zones and generators
+              </p>
+            </div>
+          </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Client Name</label>
             <input
               type="text"
               value={clientForm.name}
               onChange={(e) => setClientForm({...clientForm, name: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              placeholder="Enter client name"
               required
             />
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
             <input
               type="text"
               value={clientForm.location}
               onChange={(e) => setClientForm({...clientForm, location: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              placeholder="Enter client location"
               required
             />
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea
               value={clientForm.description}
               onChange={(e) => setClientForm({...clientForm, description: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              placeholder="Enter client description (optional)"
               rows="3"
             />
           </div>
-          <div className="flex justify-end space-x-3 pt-4">
+          
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={() => setShowClientModal(false)}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-6 py-2.5 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center space-x-2"
             >
-              Create Client
+              <Plus className="h-4 w-4" />
+              <span>Create Client</span>
             </button>
           </div>
         </form>
