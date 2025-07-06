@@ -81,17 +81,6 @@ const Navigation = ({ onViewChange, currentView }) => {
                     Clients
                   </Link>
                   <button 
-                    onClick={() => onViewChange('users')}
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      currentView === 'users' 
-                        ? 'text-blue-600 bg-blue-50' 
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    <Users className="h-4 w-4 inline mr-2" />
-                    Users
-                  </button>
-                  <button 
                     onClick={() => onViewChange('settings')}
                     className={`px-3 py-2 rounded-md text-sm font-medium ${
                       currentView === 'settings' 
@@ -205,20 +194,6 @@ const Navigation = ({ onViewChange, currentView }) => {
                   <Users className="h-4 w-4 inline mr-2" />
                   Clients
                 </Link>
-                <button 
-                  onClick={() => {
-                    onViewChange('users');
-                    setIsMenuOpen(false);
-                  }}
-                  className={`block px-3 py-2 rounded-md text-base font-medium ${
-                    currentView === 'users' 
-                      ? 'text-blue-600 bg-blue-50' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <Users className="h-4 w-4 inline mr-2" />
-                  Users
-                </button>
                 <button 
                   onClick={() => {
                     onViewChange('settings');
