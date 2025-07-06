@@ -35,7 +35,7 @@ export default function SettingsDashboard() {
   });
 
   useEffect(() => {
-    if (user && user.role === 'administrator') {
+    if (user && user.role === 'ADMIN') {
       fetchData();
     }
   }, [user]);
@@ -224,7 +224,7 @@ export default function SettingsDashboard() {
     }
   };
 
-  if (user?.role !== 'administrator') {
+      if (user?.role !== 'ADMIN') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

@@ -29,7 +29,7 @@ export default function Register() {
         body: JSON.stringify({
           ...formData,
           email: `${formData.username}@generatorlog.com`, // Generate email from username
-          role: 'operator' // Default to operator role
+          role: 'OPERATOR' // Default to operator role
         })
       });
 

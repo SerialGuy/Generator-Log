@@ -47,9 +47,9 @@ export default function Home() {
         return <BillingDashboard />;
       case 'dashboard':
       default:
-        if (user.role === 'administrator') {
+        if (user.role === 'ADMIN') {
           return <AdminDashboard />;
-        } else if (user.role === 'commercial' || user.role === 'client') {
+        } else if (user.role === 'CLIENT') {
           return <BillingDashboard />;
         } else {
           return <EnhancedDashboard />;

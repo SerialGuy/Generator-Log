@@ -30,7 +30,7 @@ export async function GET(request) {
     const user = authenticateToken(request);
     
     // Only admin can view audit logs
-    if (user.role !== 'administrator') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can view audit logs' },
         { status: 403 }

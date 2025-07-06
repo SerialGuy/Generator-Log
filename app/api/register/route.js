@@ -9,7 +9,7 @@ const supabase = createClient(
 
 export async function POST(request) {
   try {
-    const { username, password, name, email, role = 'operator' } = await request.json();
+    const { username, password, name, email, role = 'OPERATOR' } = await request.json();
 
     if (!username || !password || !name) {
       return NextResponse.json(
@@ -43,7 +43,7 @@ export async function POST(request) {
         password: hashedPassword,
         name: name,
         email: email || `${username}@generatorlog.com`, // Generate email if not provided
-        role: role || 'operator' // Default to operator role
+        role: role || 'OPERATOR' // Default to operator role
       })
       .select()
       .single();

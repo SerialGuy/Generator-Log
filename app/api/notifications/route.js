@@ -84,7 +84,7 @@ export async function POST(request) {
     const user = authenticateToken(request);
     
     // Only admin can create notifications
-    if (user.role !== 'administrator') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can create notifications' },
         { status: 403 }

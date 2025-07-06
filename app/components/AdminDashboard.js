@@ -1209,7 +1209,7 @@ export default function AdminDashboard() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Operator</option>
-              {users.filter(u => u.role === 'operator').map(user => (
+                              {users.filter(u => u.role === 'OPERATOR').map(user => (
                 <option key={user.id} value={user.id}>{user.name}</option>
               ))}
             </select>

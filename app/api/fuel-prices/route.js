@@ -29,8 +29,8 @@ export async function GET(request) {
   try {
     const user = authenticateToken(request);
     
-    // Only admin and commercial users can view fuel prices
-    if (!['administrator', 'commercial'].includes(user.role)) {
+    // Only admin and client users can view fuel prices
+    if (!['ADMIN', 'CLIENT'].includes(user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }
@@ -77,7 +77,7 @@ export async function POST(request) {
     const user = authenticateToken(request);
     
     // Only admin can create fuel prices
-    if (user.role !== 'administrator') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can create fuel prices' },
         { status: 403 }

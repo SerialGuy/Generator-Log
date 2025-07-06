@@ -10,8 +10,10 @@ import {
   Activity, 
   Users, 
   LogOut,
-  Bell
+  Bell,
+  FileText
 } from 'lucide-react';
+import Link from 'next/link';
 
 const Navigation = ({ onViewChange, currentView }) => {
   const { user, logout } = useAuth();
@@ -20,20 +22,18 @@ const Navigation = ({ onViewChange, currentView }) => {
 
   const getRoleDisplayName = (role) => {
     switch (role) {
-      case 'administrator': return 'Administrator';
-      case 'operator': return 'Technician';
-      case 'commercial': return 'Commercial';
-      case 'client': return 'Client';
+      case 'ADMIN': return 'Administrator';
+      case 'OPERATOR': return 'Technician';
+      case 'CLIENT': return 'Client';
       default: return role;
     }
   };
 
   const getDashboardName = (role) => {
     switch (role) {
-      case 'administrator': return 'Admin Dashboard';
-      case 'operator': return 'Technician Dashboard';
-      case 'commercial': return 'Billing Dashboard';
-      case 'client': return 'Client Portal';
+      case 'ADMIN': return 'Admin Dashboard';
+      case 'OPERATOR': return 'Technician Dashboard';
+      case 'CLIENT': return 'Client Portal';
       default: return 'Dashboard';
     }
   };
@@ -68,7 +68,7 @@ const Navigation = ({ onViewChange, currentView }) => {
               </button>
 
               {/* Role-specific navigation items */}
-              {user.role === 'administrator' && (
+              {user.role === 'ADMIN' && (
                 <>
                   <button 
                     onClick={() => onViewChange('users')}
@@ -100,13 +100,13 @@ const Navigation = ({ onViewChange, currentView }) => {
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    <Activity className="h-4 w-4 inline mr-2" />
-                    Audit
+                    <FileText className="h-4 w-4 inline mr-2" />
+                    Audit Logs
                   </button>
                 </>
               )}
               
-              {(user.role === 'administrator' || user.role === 'commercial') && (
+              {(user.role === 'ADMIN' || user.role === 'CLIENT') && (
                 <button 
                   onClick={() => onViewChange('billing')}
                   className={`px-3 py-2 rounded-md text-sm font-medium ${
@@ -126,14 +126,10 @@ const Navigation = ({ onViewChange, currentView }) => {
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
               {/* Notifications */}
-              <button className="p-2 rounded-full text-gray-600 hover:text-gray-900 relative">
+              <Link href="/notifications" className="nav-link">
                 <Bell className="h-5 w-5" />
-                {notifications.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                    {notifications.length}
-                  </span>
-                )}
-              </button>
+                <span>Notifications</span>
+              </Link>
 
               {/* Profile dropdown */}
               <div className="ml-3 relative">
@@ -191,7 +187,7 @@ const Navigation = ({ onViewChange, currentView }) => {
               Dashboard
             </button>
 
-            {user.role === 'administrator' && (
+            {user.role === 'ADMIN' && (
               <>
                 <button 
                   onClick={() => {
@@ -232,13 +228,13 @@ const Navigation = ({ onViewChange, currentView }) => {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  <Activity className="h-4 w-4 inline mr-2" />
-                  Audit
+                  <FileText className="h-4 w-4 inline mr-2" />
+                  Audit Logs
                 </button>
               </>
             )}
             
-            {(user.role === 'administrator' || user.role === 'commercial') && (
+            {(user.role === 'ADMIN' || user.role === 'CLIENT') && (
               <button 
                 onClick={() => {
                   onViewChange('billing');

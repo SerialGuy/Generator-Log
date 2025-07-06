@@ -35,7 +35,7 @@ export async function GET(request) {
       .order('name');
 
     // If user is operator, only show zones assigned to them
-    if (user.role === 'operator' || user.role === 'OPERATOR') {
+    if (user.role === 'OPERATOR') {
       query = query.eq('assigned_operator_id', user.id);
     }
 
@@ -76,7 +76,7 @@ export async function POST(request) {
     const user = authenticateToken(request);
     
     // Only admin can create zones
-    if (user.role !== 'administrator' && user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can create zones' },
         { status: 403 }
@@ -102,15 +102,14 @@ export async function POST(request) {
     // If client_id is provided, verify client exists
     if (client_id) {
       const { data: client } = await supabase
-        .from('users')
-        .select('id, role')
+        .from('clients')
+        .select('id')
         .eq('id', client_id)
-        .eq('role', 'client')
         .single();
 
       if (!client) {
         return NextResponse.json(
-          { error: 'Client not found or invalid client role' },
+          { error: 'Client not found' },
           { status: 404 }
         );
       }
@@ -122,7 +121,7 @@ export async function POST(request) {
         .from('users')
         .select('id, role')
         .eq('id', assigned_operator_id)
-        .eq('role', 'operator')
+        .eq('role', 'OPERATOR')
         .single();
 
       if (!operator) {
@@ -171,7 +170,7 @@ export async function PUT(request) {
     const user = authenticateToken(request);
     
     // Only admin can update zones
-    if (user.role !== 'administrator' && user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can update zones' },
         { status: 403 }
@@ -212,15 +211,14 @@ export async function PUT(request) {
     // If client_id is provided, verify client exists
     if (client_id) {
       const { data: client } = await supabase
-        .from('users')
-        .select('id, role')
+        .from('clients')
+        .select('id')
         .eq('id', client_id)
-        .eq('role', 'client')
         .single();
 
       if (!client) {
         return NextResponse.json(
-          { error: 'Client not found or invalid client role' },
+          { error: 'Client not found' },
           { status: 404 }
         );
       }
@@ -232,7 +230,7 @@ export async function PUT(request) {
         .from('users')
         .select('id, role')
         .eq('id', assigned_operator_id)
-        .eq('role', 'operator')
+        .eq('role', 'OPERATOR')
         .single();
 
       if (!operator) {
@@ -283,7 +281,7 @@ export async function DELETE(request) {
     const user = authenticateToken(request);
     
     // Only admin can delete zones
-    if (user.role !== 'administrator' && user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can delete zones' },
         { status: 403 }

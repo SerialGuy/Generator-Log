@@ -52,9 +52,9 @@ export async function GET(request) {
       .order('created_at', { ascending: false });
 
     // Apply filters based on user role
-    if (user.role === 'client') {
+    if (user.role === 'CLIENT') {
       query = query.eq('client_id', user.id);
-    } else if (user.role === 'operator') {
+    } else if (user.role === 'OPERATOR') {
       // Operators can only see billing for their assigned zones
       const { data: assignedZones } = await supabase
         .from('zones')
@@ -111,8 +111,8 @@ export async function POST(request) {
   try {
     const user = authenticateToken(request);
     
-    // Only admin and commercial users can create bills
-    if (!['administrator', 'commercial'].includes(user.role)) {
+    // Only admin and client users can create bills
+    if (!['ADMIN', 'CLIENT'].includes(user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized to create bills' },
         { status: 403 }

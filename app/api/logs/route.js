@@ -30,7 +30,7 @@ export async function GET(request) {
     const user = authenticateToken(request);
 
     // If user is operator, first get their assigned zones
-    if (user.role === 'operator') {
+    if (user.role === 'OPERATOR') {
       const { data: assignedZones } = await supabase
         .from('zones')
         .select('id')
@@ -216,7 +216,7 @@ export async function POST(request) {
       const { data: admins } = await supabase
         .from('users')
         .select('id')
-        .eq('role', 'administrator');
+        .eq('role', 'ADMIN');
 
       if (admins) {
         const notifications = admins.map(admin => ({
@@ -243,8 +243,11 @@ export async function POST(request) {
 export async function DELETE(request) {
   try {
     const user = authenticateToken(request);
-    if (user.role !== 'administrator') {
-      return NextResponse.json({ error: 'Only admin can delete logs' }, { status: 403 });
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Only administrators can delete logs' },
+        { status: 403 }
+      );
     }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -264,8 +267,11 @@ export async function DELETE(request) {
 export async function PATCH(request) {
   try {
     const user = authenticateToken(request);
-    if (user.role !== 'administrator') {
-      return NextResponse.json({ error: 'Only admin can update logs' }, { status: 403 });
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Only administrators can update logs' },
+        { status: 403 }
+      );
     }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

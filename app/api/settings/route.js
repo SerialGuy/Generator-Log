@@ -41,7 +41,7 @@ export async function GET(request) {
       query = query.eq('is_public', true);
     } else {
       // Only admin can see all settings
-      if (user.role !== 'administrator') {
+      if (user.role !== 'ADMIN') {
         query = query.eq('is_public', true);
       }
     }
@@ -94,7 +94,7 @@ export async function POST(request) {
     const user = authenticateToken(request);
     
     // Only admin can create/update settings
-    if (user.role !== 'administrator') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can modify settings' },
         { status: 403 }
@@ -149,7 +149,7 @@ export async function DELETE(request) {
     const user = authenticateToken(request);
     
     // Only admin can delete settings
-    if (user.role !== 'administrator') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can delete settings' },
         { status: 403 }

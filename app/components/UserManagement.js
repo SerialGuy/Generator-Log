@@ -13,7 +13,7 @@ const UserManagement = () => {
     password: '',
     name: '',
     email: '',
-    role: 'operator',
+    role: 'OPERATOR',
     phone: '',
     is_active: true
   });
@@ -65,7 +65,7 @@ const UserManagement = () => {
           password: '',
           name: '',
           email: '',
-          role: 'operator',
+          role: 'OPERATOR',
           phone: '',
           is_active: true
         });
@@ -112,10 +112,9 @@ const UserManagement = () => {
 
   const getRoleDisplayName = (role) => {
     switch (role) {
-      case 'administrator': return 'Administrator';
-      case 'operator': return 'Technician';
-      case 'commercial': return 'Commercial';
-      case 'client': return 'Client';
+      case 'ADMIN': return 'Administrator';
+      case 'OPERATOR': return 'Operator';
+      case 'CLIENT': return 'Client';
       default: return role;
     }
   };
@@ -137,7 +136,7 @@ const UserManagement = () => {
               password: '',
               name: '',
               email: '',
-              role: 'operator',
+              role: 'OPERATOR',
               phone: '',
               is_active: true
             });
@@ -213,10 +212,9 @@ const UserManagement = () => {
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="operator">Technician</option>
-                  <option value="administrator">Administrator</option>
-                  <option value="commercial">Commercial</option>
-                  <option value="client">Client</option>
+                  <option value="OPERATOR">Operator</option>
+                  <option value="ADMIN">Administrator</option>
+                  <option value="CLIENT">Client</option>
                 </select>
               </div>
               <div>

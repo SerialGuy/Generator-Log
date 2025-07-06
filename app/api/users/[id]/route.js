@@ -30,7 +30,7 @@ export async function PUT(request, { params }) {
   try {
     const user = authenticateToken(request);
 
-    if (user.role !== 'administrator') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Access denied' },
         { status: 403 }
@@ -127,7 +127,7 @@ export async function DELETE(request, { params }) {
   try {
     const user = authenticateToken(request);
 
-    if (user.role !== 'administrator') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Access denied' },
         { status: 403 }
