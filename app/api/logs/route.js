@@ -42,23 +42,37 @@ export async function GET(request) {
 
       const zoneIds = assignedZones.map(zone => zone.id);
       
-      // Get logs from generators in assigned zones
+      // Get generators in assigned zones
+      const { data: generators } = await supabase
+        .from('generators')
+        .select('id')
+        .in('zone_id', zoneIds);
+
+      if (!generators || generators.length === 0) {
+        return NextResponse.json([]);
+      }
+
+      const generatorIds = generators.map(g => g.id);
+      
+      // Get logs from assigned generators - only select fields that exist in the logs table
       const { data: logs, error } = await supabase
         .from('logs')
         .select(`
           id,
           action,
           timestamp,
-          operator_name,
+          operator_id,
           generator_id,
-          generators (
-            name,
-            zones (
-              name
-            )
-          )
+          runtime_hours,
+          fuel_consumed_liters,
+          fuel_added_liters,
+          fuel_level_before,
+          fuel_level_after,
+          remarks,
+          fault_description,
+          maintenance_actions
         `)
-        .in('generators.zones.id', zoneIds)
+        .in('generator_id', generatorIds)
         .order('timestamp', { ascending: false });
 
       if (error) {
@@ -71,21 +85,23 @@ export async function GET(request) {
 
       return NextResponse.json(logs);
     } else {
-      // Admin can see all logs
+      // Admin can see all logs - only select fields that exist in the logs table
       const { data: logs, error } = await supabase
         .from('logs')
         .select(`
           id,
           action,
           timestamp,
-          operator_name,
+          operator_id,
           generator_id,
-          generators (
-            name,
-            zones (
-              name
-            )
-          )
+          runtime_hours,
+          fuel_consumed_liters,
+          fuel_added_liters,
+          fuel_level_before,
+          fuel_level_after,
+          remarks,
+          fault_description,
+          maintenance_actions
         `)
         .order('timestamp', { ascending: false });
 

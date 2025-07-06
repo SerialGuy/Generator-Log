@@ -191,7 +191,7 @@ export default function AdminDashboard() {
   const [generators, setGenerators] = useState([]);
   const [zones, setZones] = useState([]);
   const [users, setUsers] = useState([]);
-  const [clients, setClients] = useState([]);
+
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -203,9 +203,7 @@ export default function AdminDashboard() {
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAddZoneModal, setShowAddZoneModal] = useState(false);
-  const [showClientModal, setShowClientModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [selectedClientForZone, setSelectedClientForZone] = useState(null);
   
   // Form states
   const [generatorForm, setGeneratorForm] = useState({
@@ -233,11 +231,7 @@ export default function AdminDashboard() {
     phone: ''
   });
 
-  const [clientForm, setClientForm] = useState({
-    name: '',
-    location: '',
-    description: ''
-  });
+
 
   // Predefined KVA options
   const kvaOptions = [62, 125, 250, 320, 500, 750, 1000];
@@ -254,7 +248,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       
-      const [generatorsRes, zonesRes, usersRes, clientsRes, logsRes] = await Promise.all([
+      const [generatorsRes, zonesRes, usersRes, logsRes] = await Promise.all([
         fetch('/api/generators', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
@@ -262,9 +256,6 @@ export default function AdminDashboard() {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch('/api/users', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('/api/clients', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch('/api/logs', {
@@ -287,10 +278,7 @@ export default function AdminDashboard() {
         setUsers(usersData);
       }
 
-      if (clientsRes.ok) {
-        const clientsData = await clientsRes.json();
-        setClients(clientsData);
-      }
+
 
       if (logsRes.ok) {
         const logsData = await logsRes.json();
@@ -373,13 +361,7 @@ export default function AdminDashboard() {
     return operator ? operator.name : 'Unassigned';
   };
 
-  const getClientName = (zoneId) => {
-    const zone = zones.find(z => z.id === zoneId);
-    if (!zone || !zone.client_id) return 'Unassigned';
-    
-    const client = clients.find(c => c.id === zone.client_id);
-    return client ? client.name : 'Unassigned';
-  };
+
 
   // Quick Actions Handlers
   const handleAddGenerator = () => {
@@ -406,15 +388,7 @@ export default function AdminDashboard() {
     setShowZoneModal(true);
   };
 
-  const handleAddClient = () => {
-    setEditingItem(null);
-    setClientForm({
-      name: '',
-      location: '',
-      description: ''
-    });
-    setShowClientModal(true);
-  };
+
 
   const handleAddUser = () => {
     setEditingItem(null);
@@ -429,17 +403,7 @@ export default function AdminDashboard() {
     setShowUserModal(true);
   };
 
-  const handleAddZoneToClient = (client) => {
-    setSelectedClientForZone(client);
-    setZoneForm({
-      name: '',
-      location: '',
-      client_id: client.id,
-      assigned_operator_id: '',
-      description: ''
-    });
-    setShowAddZoneModal(true);
-  };
+
 
   const handleExportReport = () => {
     const csvContent = [
@@ -534,9 +498,8 @@ export default function AdminDashboard() {
     
     try {
       const token = localStorage.getItem('token');
-      const url = editingItem ? '/api/zones' : '/api/zones';
+      const url = editingItem ? `/api/zones/${editingItem.id}` : '/api/zones';
       const method = editingItem ? 'PUT' : 'POST';
-      const body = editingItem ? { ...zoneForm, id: editingItem.id } : zoneForm;
 
       const response = await fetch(url, {
         method,
@@ -544,16 +507,49 @@ export default function AdminDashboard() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(zoneForm)
       });
 
       if (response.ok) {
+        const zoneData = await response.json();
+        
+        // If creating a new zone and generators are selected, assign them
+        if (!editingItem && zoneData.id) {
+          const selectedGenerators = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+            .map(cb => cb.value);
+          
+          if (selectedGenerators.length > 0) {
+            const assignResponse = await fetch('/api/generators/assign', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                generator_ids: selectedGenerators,
+                zone_id: zoneData.id
+              })
+            });
+            
+            if (assignResponse.ok) {
+              toast.success(`${selectedGenerators.length} generator(s) assigned to zone!`);
+            }
+          }
+        }
+
         await fetchData();
         setShowZoneModal(false);
         setShowAddZoneModal(false);
         setEditingItem(null);
         setSelectedClientForZone(null);
-        toast.success(editingItem ? 'Zone updated successfully' : 'Zone created successfully');
+        setZoneForm({
+          name: '',
+          location: '',
+          client_id: '',
+          assigned_operator_id: '',
+          description: ''
+        });
+        toast.success(editingItem ? 'Zone updated successfully!' : 'Zone created successfully!');
       } else {
         const error = await response.json();
         toast.error(error.error || 'Operation failed');
@@ -592,34 +588,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleClientSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/clients', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(clientForm)
-      });
 
-      if (response.ok) {
-        await fetchData();
-        setShowClientModal(false);
-        setEditingItem(null);
-        toast.success('Client created successfully!');
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Operation failed');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Operation failed');
-    }
-  };
 
   const handleEdit = (item, type) => {
     setEditingItem(item);
@@ -640,7 +609,7 @@ export default function AdminDashboard() {
         assigned_operator_id: item.assigned_operator_id || '',
         description: item.description || ''
       });
-      setShowZoneModal(true);
+            setShowZoneModal(true);
     }
   };
 
@@ -745,13 +714,7 @@ export default function AdminDashboard() {
               <Plus className="h-5 w-5 text-blue-600" />
               <span className="text-sm font-medium text-blue-900">Add Generator</span>
             </button>
-            <button 
-              onClick={handleAddClient}
-              className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-            >
-              <Users className="h-5 w-5 text-green-600" />
-              <span className="text-sm font-medium text-green-900">Add Client</span>
-            </button>
+
             <button 
               onClick={handleAddUser}
               className="flex items-center space-x-3 p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
@@ -776,7 +739,6 @@ export default function AdminDashboard() {
               {[
                 { id: 'overview', label: 'Overview', icon: BarChart3 },
                 { id: 'generators', label: 'Generators', icon: Zap },
-                { id: 'clients', label: 'Clients', icon: Users },
                 { id: 'activity', label: 'Recent Activity', icon: Activity }
               ].map(tab => (
                 <button
@@ -848,9 +810,7 @@ export default function AdminDashboard() {
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{generator.name}</h3>
                           <p className="text-sm text-gray-600">{getZoneName(generator.zone_id)}</p>
-                          <p className="text-xs text-gray-500">
-                            Client: {getClientName(generator.zone_id) || 'Unassigned'}
-                          </p>
+
                         </div>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(generator.status)}`}>
                           {getStatusIcon(generator.status)}
@@ -902,115 +862,7 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Clients Tab */}
-            {activeTab === 'clients' && (
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-semibold">Clients & Their Zones</h3>
-                  <button
-                    onClick={handleAddClient}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Client</span>
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {clients.map(client => {
-                    const clientZones = zones.filter(z => z.client_id === client.id);
-                    const totalGenerators = clientZones.reduce((sum, zone) => {
-                      return sum + generators.filter(g => g.zone_id === zone.id).length;
-                    }, 0);
-                    const runningGenerators = clientZones.reduce((sum, zone) => {
-                      return sum + generators.filter(g => g.zone_id === zone.id && g.status === 'running').length;
-                    }, 0);
-                    
-                    return (
-                      <div key={client.id} className="bg-gray-50 rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
-                            <p className="text-sm text-gray-600">{client.location}</p>
-                          </div>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {clientZones.length} Zones
-                          </span>
-                        </div>
-                        
-                        <div className="space-y-2 text-sm mb-4">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Total Generators:</span>
-                            <span className="font-medium">{totalGenerators}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Running:</span>
-                            <span className="font-medium text-green-600">{runningGenerators}/{totalGenerators}</span>
-                          </div>
-                        </div>
 
-                        {/* Client Zones */}
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium text-gray-700 mb-2">Zones:</h4>
-                          {clientZones.length === 0 ? (
-                            <p className="text-xs text-gray-500">No zones assigned</p>
-                          ) : (
-                            <div className="space-y-2">
-                              {clientZones.map(zone => {
-                                const zoneGenerators = generators.filter(g => g.zone_id === zone.id);
-                                const zoneRunningGenerators = zoneGenerators.filter(g => g.status === 'running').length;
-                                
-                                return (
-                                  <div key={zone.id} className="bg-white rounded p-3 border border-gray-200">
-                                    <div className="flex justify-between items-center">
-                                      <div>
-                                        <p className="text-sm font-medium">{zone.name}</p>
-                                        <p className="text-xs text-gray-600">{zone.location || 'No location'}</p>
-                                      </div>
-                                      <div className="text-right">
-                                        <p className="text-xs text-gray-600">{zoneGenerators.length} generators</p>
-                                        <p className="text-xs text-green-600">{zoneRunningGenerators} running</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                          <div className="text-xs text-gray-500">
-                            Created: {new Date(client.created_at).toLocaleDateString()}
-                          </div>
-                          <div className="flex space-x-2">
-                            <button 
-                              onClick={() => handleAddZoneToClient(client)}
-                              className="text-green-600 hover:text-green-800"
-                              title="Add Zone"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleEdit(client, 'client')}
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleDelete(client, 'client')}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* Recent Activity Tab */}
             {activeTab === 'activity' && (
@@ -1327,79 +1179,12 @@ export default function AdminDashboard() {
         </form>
       </Modal>
 
-      <Modal
-        isOpen={showClientModal}
-        onClose={() => setShowClientModal(false)}
-        title="Add Client"
-      >
-        <form onSubmit={handleClientSubmit} className="space-y-6">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-            <div className="flex items-center">
-              <Users className="h-5 w-5 text-green-600 mr-2" />
-              <p className="text-sm text-green-800 font-medium">
-                Create a new client to manage their zones and generators
-              </p>
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Client Name</label>
-            <input
-              type="text"
-              value={clientForm.name}
-              onChange={(e) => setClientForm({...clientForm, name: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-              placeholder="Enter client name"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-            <input
-              type="text"
-              value={clientForm.location}
-              onChange={(e) => setClientForm({...clientForm, location: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-              placeholder="Enter client location"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-            <textarea
-              value={clientForm.description}
-              onChange={(e) => setClientForm({...clientForm, description: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-              placeholder="Enter client description (optional)"
-              rows="3"
-            />
-          </div>
-          
-          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={() => setShowClientModal(false)}
-              className="px-6 py-2.5 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center space-x-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Client</span>
-            </button>
-          </div>
-        </form>
-      </Modal>
+
 
       <Modal
         isOpen={showAddZoneModal}
         onClose={() => setShowAddZoneModal(false)}
-        title={`Add Zone to ${selectedClientForZone?.name || 'Client'}`}
+        title={editingItem ? 'Edit Zone' : `Add Zone to ${selectedClientForZone?.name || 'Client'}`}
       >
         <form onSubmit={handleZoneSubmit} className="space-y-4">
           <div>
@@ -1453,7 +1238,17 @@ export default function AdminDashboard() {
               ) : (
                 generators.filter(g => !g.zone_id).map(generator => (
                   <div key={generator.id} className="flex items-center justify-between py-1">
-                    <span className="text-sm">{generator.name} ({generator.kva} KVA)</span>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`gen-${generator.id}`}
+                        value={generator.id}
+                        className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor={`gen-${generator.id}`} className="text-sm">
+                        {generator.name} ({generator.kva} KVA)
+                      </label>
+                    </div>
                     <span className="text-xs text-gray-500">{generator.status}</span>
                   </div>
                 ))
@@ -1476,7 +1271,7 @@ export default function AdminDashboard() {
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
-              Add Zone
+              {editingItem ? 'Update Zone' : 'Add Zone'}
             </button>
           </div>
         </form>

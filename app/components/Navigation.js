@@ -10,7 +10,6 @@ import {
   Activity, 
   Users, 
   LogOut,
-  Bell,
   FileText
 } from 'lucide-react';
 import Link from 'next/link';
@@ -70,6 +69,17 @@ const Navigation = ({ onViewChange, currentView }) => {
               {/* Role-specific navigation items */}
               {user.role === 'ADMIN' && (
                 <>
+                  <Link 
+                    href="/clients"
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      currentView === 'clients' 
+                        ? 'text-blue-600 bg-blue-50' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Users className="h-4 w-4 inline mr-2" />
+                    Clients
+                  </Link>
                   <button 
                     onClick={() => onViewChange('users')}
                     className={`px-3 py-2 rounded-md text-sm font-medium ${
@@ -125,12 +135,6 @@ const Navigation = ({ onViewChange, currentView }) => {
           {/* User Menu */}
           <div className="hidden md:block">
             <div className="ml-4 flex items-center md:ml-6">
-              {/* Notifications */}
-              <Link href="/notifications" className="nav-link">
-                <Bell className="h-5 w-5" />
-                <span>Notifications</span>
-              </Link>
-
               {/* Profile dropdown */}
               <div className="ml-3 relative">
                 <div className="flex items-center space-x-3">
@@ -189,6 +193,18 @@ const Navigation = ({ onViewChange, currentView }) => {
 
             {user.role === 'ADMIN' && (
               <>
+                <Link 
+                  href="/clients"
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    currentView === 'clients' 
+                      ? 'text-blue-600 bg-blue-50' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Users className="h-4 w-4 inline mr-2" />
+                  Clients
+                </Link>
                 <button 
                   onClick={() => {
                     onViewChange('users');

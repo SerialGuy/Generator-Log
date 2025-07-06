@@ -29,35 +29,35 @@ export async function PUT(request, { params }) {
   try {
     const user = authenticateToken(request);
     
-    // Only admin can update zones
+    // Only admin can update clients
     if (user.role !== 'ADMIN') {
       return NextResponse.json(
-        { error: 'Only administrators can update zones' },
+        { error: 'Only administrators can update clients' },
         { status: 403 }
       );
     }
 
     const { id } = params;
     const body = await request.json();
-    const { name, location, client_id, assigned_operator_id, description } = body;
+    const { name, location, description, contact_person, contact_email, contact_phone, is_active } = body;
 
     if (!name) {
       return NextResponse.json(
-        { error: 'Zone name is required' },
+        { error: 'Client name is required' },
         { status: 400 }
       );
     }
 
-    // Check if zone exists
-    const { data: existingZone } = await supabase
-      .from('zones')
+    // Check if client exists
+    const { data: existingClient } = await supabase
+      .from('clients')
       .select('id')
       .eq('id', id)
       .single();
 
-    if (!existingZone) {
+    if (!existingClient) {
       return NextResponse.json(
-        { error: 'Zone not found' },
+        { error: 'Client not found' },
         { status: 404 }
       );
     }
@@ -65,15 +65,17 @@ export async function PUT(request, { params }) {
     // Set current user for audit log
     await supabase.rpc('set_current_user', { user_id: user.id });
 
-    // Update zone
-    const { data: updatedZone, error } = await supabase
-      .from('zones')
+    // Update client
+    const { data: updatedClient, error } = await supabase
+      .from('clients')
       .update({
         name,
         location: location || null,
-        client_id: client_id || null,
-        assigned_operator_id: assigned_operator_id || null,
         description: description || null,
+        contact_person: contact_person || null,
+        contact_email: contact_email || null,
+        contact_phone: contact_phone || null,
+        is_active: is_active !== undefined ? is_active : true,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -81,18 +83,18 @@ export async function PUT(request, { params }) {
       .single();
 
     if (error) {
-      console.error('Error updating zone:', error);
+      console.error('Error updating client:', error);
       return NextResponse.json(
-        { error: 'Failed to update zone' },
+        { error: 'Failed to update client' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(updatedZone);
+    return NextResponse.json(updatedClient);
   } catch (error) {
-    console.error('Error updating zone:', error);
+    console.error('Error updating client:', error);
     return NextResponse.json(
-      { error: 'Failed to update zone' },
+      { error: 'Failed to update client' },
       { status: 500 }
     );
   }
@@ -102,39 +104,39 @@ export async function DELETE(request, { params }) {
   try {
     const user = authenticateToken(request);
     
-    // Only admin can delete zones
+    // Only admin can delete clients
     if (user.role !== 'ADMIN') {
       return NextResponse.json(
-        { error: 'Only administrators can delete zones' },
+        { error: 'Only administrators can delete clients' },
         { status: 403 }
       );
     }
 
     const { id } = params;
 
-    // Check if zone exists
-    const { data: existingZone } = await supabase
-      .from('zones')
+    // Check if client exists
+    const { data: existingClient } = await supabase
+      .from('clients')
       .select('id, name')
       .eq('id', id)
       .single();
 
-    if (!existingZone) {
+    if (!existingClient) {
       return NextResponse.json(
-        { error: 'Zone not found' },
+        { error: 'Client not found' },
         { status: 404 }
       );
     }
 
-    // Check if zone has generators
-    const { data: generators } = await supabase
-      .from('generators')
+    // Check if client has zones
+    const { data: zones } = await supabase
+      .from('zones')
       .select('id')
-      .eq('zone_id', id);
+      .eq('client_id', id);
 
-    if (generators && generators.length > 0) {
+    if (zones && zones.length > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete zone with assigned generators. Please reassign generators first.' },
+        { error: 'Cannot delete client with assigned zones. Please reassign or delete zones first.' },
         { status: 400 }
       );
     }
@@ -142,27 +144,27 @@ export async function DELETE(request, { params }) {
     // Set current user for audit log
     await supabase.rpc('set_current_user', { user_id: user.id });
 
-    // Delete zone
+    // Delete client
     const { error } = await supabase
-      .from('zones')
+      .from('clients')
       .delete()
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting zone:', error);
+      console.error('Error deleting client:', error);
       return NextResponse.json(
-        { error: 'Failed to delete zone' },
+        { error: 'Failed to delete client' },
         { status: 500 }
       );
     }
 
     return NextResponse.json({ 
-      message: `Zone "${existingZone.name}" deleted successfully` 
+      message: `Client "${existingClient.name}" deleted successfully` 
     });
   } catch (error) {
-    console.error('Error deleting zone:', error);
+    console.error('Error deleting client:', error);
     return NextResponse.json(
-      { error: 'Failed to delete zone' },
+      { error: 'Failed to delete client' },
       { status: 500 }
     );
   }
