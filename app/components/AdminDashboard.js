@@ -469,9 +469,22 @@ export default function AdminDashboard() {
     e.preventDefault();
     
     try {
+      console.log('Generator form data:', generatorForm);
+      
+      // Validate required fields
+      if (!generatorForm.name || !generatorForm.kva) {
+        toast.error('Model name and KVA rating are required');
+        return;
+      }
+      
       const token = localStorage.getItem('token');
-      const url = editingItem ? '/api/generators' : '/api/generators';
-      const method = editingItem ? 'PUT' : 'POST';
+      if (!token) {
+        toast.error('Authentication token not found');
+        return;
+      }
+      
+      const url = '/api/generators';
+      const method = 'POST';
       
       // Auto-generate name for new generators and set default status
       let generatorData = { ...generatorForm };
@@ -485,6 +498,8 @@ export default function AdminDashboard() {
         generatorData.id = editingItem.id;
       }
 
+      console.log('Sending generator data:', generatorData);
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -494,17 +509,22 @@ export default function AdminDashboard() {
         body: JSON.stringify(generatorData)
       });
 
+      console.log('Response status:', response.status);
+
       if (response.ok) {
+        const result = await response.json();
+        console.log('Success response:', result);
         await fetchData();
         setShowGeneratorModal(false);
         setEditingItem(null);
         toast.success(editingItem ? 'Generator updated successfully' : 'Generator created successfully');
       } else {
         const error = await response.json();
+        console.error('Error response:', error);
         toast.error(error.error || 'Operation failed');
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Exception in handleGeneratorSubmit:', error);
       toast.error('Operation failed');
     }
   };
