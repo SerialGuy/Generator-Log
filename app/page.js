@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/AdminDashboard';
+import EnhancedDashboard from './components/EnhancedDashboard';
+import BillingDashboard from './components/BillingDashboard';
+import SettingsDashboard from './components/SettingsDashboard';
 import Navigation from './components/Navigation';
 
 export default function Home() {
@@ -35,8 +38,12 @@ export default function Home() {
       <div className="container">
         {user.role === 'administrator' ? (
           <AdminDashboard />
+        ) : user.role === 'commercial' ? (
+          <BillingDashboard />
+        ) : user.role === 'client' ? (
+          <BillingDashboard />
         ) : (
-          <Dashboard />
+          <EnhancedDashboard />
         )}
       </div>
     </div>

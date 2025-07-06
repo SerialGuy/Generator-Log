@@ -1,160 +1,251 @@
-# Generator Log - Next.js App
+# Generator Log System
 
-A real-time generator management system built with Next.js 14, Supabase, and modern web technologies.
+A comprehensive web application for managing diesel generators, tracking fuel consumption, generating bills, and monitoring maintenance schedules.
 
-## Features
+## 🚀 Features
 
-- **Real-time Dashboard**: Monitor generator status and activity in real-time
-- **Role-based Access**: Separate dashboards for operators and administrators
-- **Zone Management**: Organize generators by zones with operator assignments
-- **Activity Logging**: Track all generator start/stop actions with timestamps
-- **Responsive Design**: Works on desktop and mobile devices
-- **Authentication**: Secure login system with JWT tokens
+### Core Functionality
+- **Multi-Role User Management**: Admin, Technician, Commercial, and Client roles
+- **Zone & Asset Management**: Organize generators by zones with technician assignments
+- **Enhanced Logging**: Track start/stop times, fuel consumption, maintenance, and faults
+- **Real-time Monitoring**: Live status updates and notifications
+- **Mobile-Friendly Interface**: Responsive design for field technicians
 
-## Tech Stack
+### Advanced Features
+- **Fuel Cost Calculation**: Automatic billing based on consumption and fuel prices
+- **PDF Bill Generation**: Professional invoice creation with detailed breakdowns
+- **Notification System**: Alerts for faults, maintenance due, and overdue logs
+- **Audit Trails**: Complete tracking of all system changes
+- **Data Export**: Excel and CSV export capabilities
+- **File Attachments**: Support for photos and documents in logs
 
-- **Frontend**: Next.js 14 (App Router)
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: JWT with bcrypt password hashing
-- **Styling**: CSS with responsive design
-- **Deployment**: Vercel
+### Dashboard & Analytics
+- **Real-time Charts**: Generator status distribution and fuel consumption trends
+- **Performance Metrics**: Runtime hours, fuel efficiency, and cost analysis
+- **Maintenance Scheduling**: Automated reminders and maintenance tracking
+- **Billing Management**: Complete billing cycle from generation to payment
 
-## Prerequisites
+## 🛠 Technology Stack
+
+- **Frontend**: Next.js 14, React 18, Tailwind CSS
+- **Backend**: Next.js API Routes, Supabase
+- **Database**: PostgreSQL (via Supabase)
+- **Authentication**: JWT with role-based access control
+- **Charts**: Chart.js with React Chart.js 2
+- **PDF Generation**: jsPDF with AutoTable
+- **File Upload**: React Dropzone
+- **Notifications**: React Hot Toast
+
+## 📋 Prerequisites
 
 - Node.js 18+ 
+- npm or yarn
 - Supabase account
-- Vercel account (for deployment)
+- Modern web browser
 
-## Setup Instructions
+## 🚀 Installation
 
-### 1. Database Setup
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd generator-log-system
+   ```
 
-1. Create a new Supabase project
-2. Run the SQL schema from `supabase-schema.sql` in your Supabase SQL editor
-3. Note down your Supabase URL and anon key
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### 2. Environment Variables
+3. **Set up Supabase**
+   - Create a new Supabase project
+   - Run the SQL schema from `supabase-schema.sql` in your Supabase SQL editor
+   - Get your project URL and anon key
 
-Create a `.env.local` file in the root directory:
+4. **Configure environment variables**
+   Create a `.env.local` file:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   JWT_SECRET=your_jwt_secret_key
+   ```
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-JWT_SECRET=your_jwt_secret_key
-```
+5. **Run the development server**
+   ```bash
+   npm run dev
+   ```
 
-### 3. Local Development
+6. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-```bash
-# Install dependencies
-npm install
+## 👥 User Roles & Permissions
 
-# Run development server
-npm run dev
-
-# Open http://localhost:3000
-```
-
-### 4. Vercel Deployment
-
-1. **Connect to Vercel**:
-   - Push your code to GitHub
-   - Connect your repository to Vercel
-   - Vercel will automatically detect Next.js
-
-2. **Set Environment Variables in Vercel**:
-   - Go to your Vercel project settings
-   - Add the same environment variables as in `.env.local`
-   - Redeploy after adding environment variables
-
-3. **Deploy**:
-   - Vercel will automatically deploy on every push to main branch
-   - Or manually deploy from the Vercel dashboard
-
-## Default Users
-
-After running the schema, default users are created:
-
-- **Admin**: `admin` / `admin123`
-- **Operator**: `operator` / `operator123`
-
-## API Routes
-
-The app uses Next.js API routes for serverless functions:
-
-- `POST /api/login` - User authentication
-- `POST /api/register` - User registration
-- `GET /api/generators` - Fetch generators (with role-based filtering)
-- `POST /api/generators/[id]/[action]` - Start/stop generators
-- `GET /api/zones` - Fetch zones
-- `POST /api/zones/complete` - Create new zone with generators
-- `PUT /api/zones/[id]` - Update zone
-- `GET /api/users` - Fetch users (admin only)
-- `GET /api/logs` - Fetch activity logs (with role-based filtering)
-
-## Project Structure
-
-```
-app/
-├── api/                    # Next.js API routes
-│   ├── login/
-│   ├── register/
-│   ├── generators/
-│   ├── zones/
-│   ├── users/
-│   └── logs/
-├── components/             # React components
-│   ├── Login.js
-│   ├── Register.js
-│   ├── Dashboard.js
-│   ├── AdminDashboard.js
-│   └── Navigation.js
-├── contexts/              # React contexts
-│   ├── AuthContext.js
-│   └── SocketContext.js
-├── login/                 # Login page
-├── register/              # Register page
-├── globals.css            # Global styles
-├── layout.js              # Root layout
-├── page.js                # Home page
-└── providers.js           # Context providers
-```
-
-## Features by Role
-
-### Operator Dashboard
-- View assigned generators only
-- Start/stop generators
-- View activity logs
-- Location tracking for actions
-
-### Administrator Dashboard
-- View all generators and zones
-- Create and edit zones
-- Assign operators to zones
-- Monitor all activity
+### Administrator
+- Full system access
 - User management
+- Zone and generator configuration
+- System settings
+- Audit trail access
+- Billing management
 
-## Real-time Updates
+### Technician (Operator)
+- View assigned zones and generators
+- Create detailed logs with fuel tracking
+- Report faults and maintenance
+- Upload attachments
+- View notifications
 
-The app uses polling to fetch updates every 10 seconds, which works well with Vercel's serverless architecture.
+### Commercial
+- Billing dashboard access
+- Fuel price management
+- Bill generation and tracking
+- Client communication
 
-## Security
+### Client
+- View own billing information
+- Access to assigned zone data
+- Payment tracking
+
+## 📊 Database Schema
+
+The system includes the following main tables:
+
+- **users**: User accounts with role-based permissions
+- **zones**: Geographic zones containing generators
+- **generators**: Individual generator units with specifications
+- **logs**: Detailed activity logs with fuel consumption
+- **fuel_prices**: Historical fuel pricing data
+- **billing**: Invoice generation and payment tracking
+- **notifications**: System alerts and reminders
+- **audit_logs**: Complete change tracking
+- **system_settings**: Configuration management
+
+## 🔧 API Endpoints
+
+### Authentication
+- `POST /api/login` - User login
+- `POST /api/register` - User registration
+
+### Core Data
+- `GET /api/generators` - List generators
+- `POST /api/generators/[id]/[action]` - Generator actions
+- `GET /api/zones` - List zones
+- `GET /api/logs` - List logs
+- `POST /api/logs` - Create log entry
+
+### Billing & Finance
+- `GET /api/billing` - List bills
+- `POST /api/billing` - Generate new bill
+- `GET /api/fuel-prices` - Fuel price history
+- `POST /api/fuel-prices` - Update fuel price
+
+### System Management
+- `GET /api/settings` - System settings
+- `POST /api/settings` - Update settings
+- `GET /api/notifications` - User notifications
+- `GET /api/audit-logs` - Audit trail
+
+## 📱 Mobile Optimization
+
+The application is fully responsive and optimized for mobile devices:
+
+- Touch-friendly interface
+- Swipe gestures for navigation
+- Optimized forms for mobile input
+- Camera integration for photo attachments
+- Offline capability for basic functions
+
+## 🔒 Security Features
 
 - JWT-based authentication
-- Role-based access control
-- Password hashing with bcrypt
-- Environment variable protection
-- Supabase Row Level Security (RLS)
+- Role-based access control (RBAC)
+- Input validation and sanitization
+- SQL injection prevention
+- XSS protection
+- Audit logging for all changes
+- Secure file upload handling
 
-## Contributing
+## 📈 Monitoring & Analytics
+
+### Real-time Metrics
+- Generator status monitoring
+- Fuel consumption tracking
+- Runtime efficiency analysis
+- Cost per hour calculations
+- Maintenance schedule compliance
+
+### Reporting
+- Daily/monthly runtime reports
+- Fuel usage trends
+- Fault frequency analysis
+- Cost analysis by zone/generator
+- Maintenance history
+
+## 🚨 Notifications & Alerts
+
+### Automated Alerts
+- Generator fault notifications
+- Maintenance due reminders
+- Low fuel level warnings
+- Overdue log entries
+- Payment reminders
+
+### Communication Channels
+- In-app notifications
+- Email notifications (configurable)
+- SMS alerts (future enhancement)
+
+## 🔄 Deployment
+
+### Production Build
+```bash
+npm run build
+npm start
+```
+
+### Environment Variables for Production
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_production_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_production_supabase_anon_key
+JWT_SECRET=your_secure_jwt_secret
+NODE_ENV=production
+```
+
+### Recommended Hosting
+- Vercel (recommended for Next.js)
+- Netlify
+- AWS Amplify
+- DigitalOcean App Platform
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+## 📝 License
 
-MIT License - see LICENSE file for details 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+For support and questions:
+- Create an issue in the repository
+- Contact the development team
+- Check the documentation
+
+## 🔮 Future Enhancements
+
+- **IoT Integration**: Real-time generator monitoring
+- **Mobile App**: Native iOS/Android applications
+- **Advanced Analytics**: Machine learning for predictive maintenance
+- **Multi-language Support**: Internationalization
+- **API Integration**: Third-party system connections
+- **Advanced Reporting**: Custom report builder
+- **Workflow Automation**: Automated task assignments
+- **Inventory Management**: Spare parts tracking
+
+---
+
+**Built with ❤️ for efficient generator management** 
