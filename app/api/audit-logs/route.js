@@ -43,6 +43,7 @@ export async function GET(request) {
     const userId = searchParams.get('userId');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const zoneId = searchParams.get('zoneId');
     const limit = searchParams.get('limit') || 100;
     const offset = searchParams.get('offset') || 0;
 
@@ -75,6 +76,10 @@ export async function GET(request) {
     }
     if (endDate) {
       query = query.lte('created_at', endDate);
+    }
+    if (zoneId) {
+      // For zone-related records, filter by zone_id in the record data
+      query = query.or(`new_values->>'zone_id'.eq.${zoneId},old_values->>'zone_id'.eq.${zoneId}`);
     }
 
     const { data: auditLogs, error } = await query;

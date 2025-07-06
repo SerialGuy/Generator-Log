@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { 
   Settings, 
   Shield, 
@@ -17,6 +18,7 @@ import toast from 'react-hot-toast';
 
 export default function SettingsDashboard() {
   const { user } = useAuth();
+  const { fetchSettings } = useSettings();
   const [settings, setSettings] = useState({});
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,7 @@ export default function SettingsDashboard() {
         });
         setEditingSetting(null);
         setEditingValues({});
+        await fetchSettings(); // Refresh global settings
         toast.success('Setting updated successfully');
       } else {
         const error = await response.json();

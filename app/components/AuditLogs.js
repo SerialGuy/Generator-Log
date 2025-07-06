@@ -5,23 +5,53 @@ import { Filter, Download, Eye } from 'lucide-react';
 
 const AuditLogs = () => {
   const [auditLogs, setAuditLogs] = useState([]);
+  const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     table_name: '',
     action: '',
     user_id: '',
     date_from: '',
-    date_to: ''
+    date_to: '',
+    zone_id: ''
   });
 
   useEffect(() => {
     fetchAuditLogs();
-  }, []);
+    fetchZones();
+  }, [filters]);
+
+  const fetchZones = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/zones', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const zonesData = await response.json();
+        setZones(zonesData);
+      }
+    } catch (error) {
+      console.error('Error fetching zones:', error);
+    }
+  };
 
   const fetchAuditLogs = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/audit-logs', {
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (filters.table_name) params.append('tableName', filters.table_name);
+      if (filters.action) params.append('action', filters.action);
+      if (filters.user_id) params.append('userId', filters.user_id);
+      if (filters.date_from) params.append('startDate', filters.date_from);
+      if (filters.date_to) params.append('endDate', filters.date_to);
+      if (filters.zone_id) params.append('zoneId', filters.zone_id);
+      
+      const response = await fetch(`/api/audit-logs?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -55,6 +85,18 @@ const AuditLogs = () => {
       case 'billing': return 'Billing';
       default: return tableName;
     }
+  };
+
+  const getZoneName = (log) => {
+    if (log.new_values?.zone_id) {
+      const zone = zones.find(z => z.id === log.new_values.zone_id);
+      return zone ? zone.name : 'Unknown Zone';
+    }
+    if (log.old_values?.zone_id) {
+      const zone = zones.find(z => z.id === log.old_values.zone_id);
+      return zone ? zone.name : 'Unknown Zone';
+    }
+    return null;
   };
 
   const formatDate = (dateString) => {
@@ -106,7 +148,7 @@ const AuditLogs = () => {
           <Filter className="h-4 w-4 mr-2" />
           Filters
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Table
@@ -139,17 +181,34 @@ const AuditLogs = () => {
               <option value="DELETE">Deleted</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date From
-            </label>
-            <input
-              type="date"
-              value={filters.date_from}
-              onChange={(e) => setFilters({...filters, date_from: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+                      <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date From
+              </label>
+              <input
+                type="date"
+                value={filters.date_from}
+                onChange={(e) => setFilters({...filters, date_from: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Zone
+              </label>
+              <select
+                value={filters.zone_id}
+                onChange={(e) => setFilters({...filters, zone_id: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Zones</option>
+                {zones.map(zone => (
+                  <option key={zone.id} value={zone.id}>
+                    {zone.name}
+                  </option>
+                ))}
+              </select>
+            </div>
         </div>
       </div>
 
@@ -170,12 +229,15 @@ const AuditLogs = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Table
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Record ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Details
-              </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Record ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Zone
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Details
+                  </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -215,18 +277,21 @@ const AuditLogs = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {getTableDisplayName(log.table_name)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {log.record_id ? log.record_id.substring(0, 8) + '...' : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {log.action === 'UPDATE' ? (
-                      <span className="text-yellow-600">Modified</span>
-                    ) : log.action === 'DELETE' ? (
-                      <span className="text-red-600">Removed</span>
-                    ) : (
-                      <span className="text-green-600">Added</span>
-                    )}
-                  </td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                     {log.record_id ? log.record_id.substring(0, 8) + '...' : '-'}
+                   </td>
+                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                     {getZoneName(log) || '-'}
+                   </td>
+                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                     {log.action === 'UPDATE' ? (
+                       <span className="text-yellow-600">Modified</span>
+                     ) : log.action === 'DELETE' ? (
+                       <span className="text-red-600">Removed</span>
+                     ) : (
+                       <span className="text-green-600">Added</span>
+                     )}
+                   </td>
                 </tr>
               ))
             )}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { 
   DollarSign, 
   FileText, 
@@ -20,6 +21,7 @@ import 'jspdf-autotable';
 
 export default function BillingDashboard() {
   const { user } = useAuth();
+  const { getCurrencySymbol, getDefaultFuelPrice, fetchSettings } = useSettings();
   const [billing, setBilling] = useState([]);
   const [zones, setZones] = useState([]);
   const [fuelPrices, setFuelPrices] = useState([]);
@@ -168,6 +170,9 @@ export default function BillingDashboard() {
         setShowFuelPriceModal(false);
         setFuelPriceForm({ price_per_liter: '', effective_date: '' });
         toast.success('Fuel price updated successfully');
+        
+        // Also update the default fuel price setting
+        await fetchSettings();
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to update fuel price');
@@ -241,9 +246,9 @@ export default function BillingDashboard() {
     // Summary table
     const tableData = [
       ['Description', 'Amount'],
-      ['Fuel Cost', `$${bill.fuel_cost?.toFixed(2) || '0.00'}`],
-      ['Service Fee', `$${bill.service_fee?.toFixed(2) || '0.00'}`],
-      ['Total', `$${bill.total_amount?.toFixed(2) || '0.00'}`]
+              ['Fuel Cost', `${getCurrencySymbol()}${bill.fuel_cost?.toFixed(2) || '0.00'}`],
+        ['Service Fee', `${getCurrencySymbol()}${bill.service_fee?.toFixed(2) || '0.00'}`],
+                  ['Total', `${getCurrencySymbol()}${bill.total_amount?.toFixed(2) || '0.00'}`]
     ];
     
     doc.autoTable({
@@ -362,7 +367,7 @@ export default function BillingDashboard() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-semibold text-gray-900">${stats.totalRevenue.toFixed(2)}</p>
+                <p className="text-2xl font-semibold text-gray-900">{getCurrencySymbol()}{stats.totalRevenue.toFixed(2)}</p>
               </div>
             </div>
           </div>
@@ -445,7 +450,7 @@ export default function BillingDashboard() {
                       {new Date(bill.billing_period_start).toLocaleDateString()} - {new Date(bill.billing_period_end).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${bill.total_amount?.toFixed(2) || '0.00'}
+                                              ${getCurrencySymbol()}${bill.total_amount?.toFixed(2) || '0.00'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(bill.status)}`}>
