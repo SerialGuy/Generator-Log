@@ -30,7 +30,7 @@ export async function GET(request) {
     const user = authenticateToken(request);
     
     // Only admin can view all clients
-    if (user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'administrator') {
       return NextResponse.json(
         { error: 'Only administrators can view all clients' },
         { status: 403 }
@@ -77,7 +77,7 @@ export async function POST(request) {
     const user = authenticateToken(request);
     
     // Only admin can create clients
-    if (user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'administrator') {
       return NextResponse.json(
         { error: 'Only administrators can create clients' },
         { status: 403 }

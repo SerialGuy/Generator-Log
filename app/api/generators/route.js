@@ -30,7 +30,7 @@ export async function GET(request) {
     const user = authenticateToken(request);
 
     // If user is operator, first get their assigned zones
-    if (user.role === 'OPERATOR') {
+    if (user.role === 'OPERATOR' || user.role === 'operator') {
       const { data: assignedZones } = await supabase
         .from('zones')
         .select('id')
@@ -115,7 +115,7 @@ export async function POST(request) {
     const user = authenticateToken(request);
     
     // Only admin can create generators
-    if (user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'administrator') {
       return NextResponse.json(
         { error: 'Only administrators can create generators' },
         { status: 403 }
@@ -197,7 +197,7 @@ export async function PUT(request) {
     const user = authenticateToken(request);
     
     // Only admin can update generators
-    if (user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'administrator') {
       return NextResponse.json(
         { error: 'Only administrators can update generators' },
         { status: 403 }
@@ -295,7 +295,7 @@ export async function DELETE(request) {
     const user = authenticateToken(request);
     
     // Only admin can delete generators
-    if (user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'administrator') {
       return NextResponse.json(
         { error: 'Only administrators can delete generators' },
         { status: 403 }

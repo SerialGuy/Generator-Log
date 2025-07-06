@@ -35,7 +35,7 @@ export async function GET(request) {
       .order('name');
 
     // If user is operator, only show zones assigned to them
-    if (user.role === 'operator') {
+    if (user.role === 'operator' || user.role === 'OPERATOR') {
       query = query.eq('assigned_operator_id', user.id);
     }
 
@@ -76,7 +76,7 @@ export async function POST(request) {
     const user = authenticateToken(request);
     
     // Only admin can create zones
-    if (user.role !== 'administrator') {
+    if (user.role !== 'administrator' && user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can create zones' },
         { status: 403 }
@@ -171,7 +171,7 @@ export async function PUT(request) {
     const user = authenticateToken(request);
     
     // Only admin can update zones
-    if (user.role !== 'administrator') {
+    if (user.role !== 'administrator' && user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can update zones' },
         { status: 403 }
@@ -283,7 +283,7 @@ export async function DELETE(request) {
     const user = authenticateToken(request);
     
     // Only admin can delete zones
-    if (user.role !== 'administrator') {
+    if (user.role !== 'administrator' && user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can delete zones' },
         { status: 403 }
