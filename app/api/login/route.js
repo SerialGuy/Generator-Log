@@ -21,6 +21,8 @@ export async function POST(request) {
       );
     }
 
+    console.log('Login attempt for username:', username);
+
     // Find user
     const { data: user, error } = await supabase
       .from('users')
@@ -28,21 +30,35 @@ export async function POST(request) {
       .eq('username', username)
       .single();
 
-    if (error || !user) {
+    if (error) {
+      console.error('Database error during login:', error);
+      return NextResponse.json(
+        { error: 'Database error during login' },
+        { status: 500 }
+      );
+    }
+
+    if (!user) {
+      console.log('User not found:', username);
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
 
+    console.log('User found:', { id: user.id, username: user.username, role: user.role });
+
     // Check password
     const isValidPassword = bcrypt.compareSync(password, user.password);
     if (!isValidPassword) {
+      console.log('Invalid password for user:', username);
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
+
+    console.log('Password validated for user:', username);
 
     // Create JWT token
     const token = jwt.sign(
@@ -58,6 +74,8 @@ export async function POST(request) {
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
+    console.log('Login successful for user:', username);
+
     return NextResponse.json({
       user: userWithoutPassword,
       token
@@ -65,7 +83,7 @@ export async function POST(request) {
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { error: 'Login failed' },
+      { error: 'Login failed', details: error.message },
       { status: 500 }
     );
   }

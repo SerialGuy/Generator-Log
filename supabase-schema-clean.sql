@@ -27,7 +27,7 @@ DROP FUNCTION IF EXISTS set_current_user(UUID) CASCADE;
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
+  password VARCHAR(255) NOT NULL,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   role VARCHAR(50) NOT NULL CHECK (role IN ('ADMIN', 'CLIENT', 'OPERATOR')),
@@ -323,7 +323,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Step 25: Insert a default admin user (password: admin123)
-INSERT INTO users (username, password_hash, name, email, role) VALUES 
+INSERT INTO users (username, password, name, email, role) VALUES 
 ('admin', '$2a$10$XoAZWgefbeatvfMTY.ywCertl9FL7sybPwXxwr/Mb6ZJUHzUKJoSi', 'System Administrator', 'admin@generatorlog.com', 'ADMIN');
 
 -- Step 26: Verify the setup
