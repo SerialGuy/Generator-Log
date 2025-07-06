@@ -127,6 +127,20 @@ CREATE TABLE IF NOT EXISTS maintenance_schedules (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create clients table
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  location VARCHAR(255),
+  description TEXT,
+  contact_person VARCHAR(255),
+  contact_email VARCHAR(255),
+  contact_phone VARCHAR(20),
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance (only if they don't exist)
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
@@ -148,6 +162,8 @@ CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_table_name ON audit_logs(table_name);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);
+CREATE INDEX IF NOT EXISTS idx_clients_is_active ON clients(is_active);
 
 -- Enable Row Level Security (RLS) on new tables only
 ALTER TABLE fuel_prices ENABLE ROW LEVEL SECURITY;
@@ -157,6 +173,7 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintenance_schedules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for new tables only
 CREATE POLICY "Allow all operations on fuel_prices" ON fuel_prices FOR ALL USING (true);
@@ -166,6 +183,7 @@ CREATE POLICY "Allow all operations on notifications" ON notifications FOR ALL U
 CREATE POLICY "Allow all operations on audit_logs" ON audit_logs FOR ALL USING (true);
 CREATE POLICY "Allow all operations on system_settings" ON system_settings FOR ALL USING (true);
 CREATE POLICY "Allow all operations on maintenance_schedules" ON maintenance_schedules FOR ALL USING (true);
+CREATE POLICY "Allow all operations on clients" ON clients FOR ALL USING (true);
 
 -- Insert default system settings (only if they don't exist)
 INSERT INTO system_settings (setting_key, setting_value, setting_type, description, is_public) VALUES

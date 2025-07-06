@@ -186,6 +186,7 @@ export default function AdminDashboard() {
   const [generators, setGenerators] = useState([]);
   const [zones, setZones] = useState([]);
   const [users, setUsers] = useState([]);
+  const [clients, setClients] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -197,14 +198,17 @@ export default function AdminDashboard() {
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAddZoneModal, setShowAddZoneModal] = useState(false);
+  const [showClientModal, setShowClientModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [selectedClientForZone, setSelectedClientForZone] = useState(null);
   
   // Form states
   const [generatorForm, setGeneratorForm] = useState({
-    name: '',
     kva: '',
     zone_id: '',
+    fuel_type: 'diesel',
+    current_fuel_level: '',
+    fuel_capacity_liters: '',
     status: 'offline'
   });
   
@@ -221,9 +225,18 @@ export default function AdminDashboard() {
     username: '',
     email: '',
     password: '',
-    role: 'client',
+    role: 'OPERATOR',
     phone: ''
   });
+
+  const [clientForm, setClientForm] = useState({
+    name: '',
+    location: '',
+    description: ''
+  });
+
+  // Predefined KVA options
+  const kvaOptions = [62, 125, 250, 320, 500, 750, 1000];
 
   useEffect(() => {
     if (user) {
@@ -237,7 +250,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       
-      const [generatorsRes, zonesRes, usersRes, logsRes] = await Promise.all([
+      const [generatorsRes, zonesRes, usersRes, clientsRes, logsRes] = await Promise.all([
         fetch('/api/generators', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
@@ -245,6 +258,9 @@ export default function AdminDashboard() {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch('/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/clients', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch('/api/logs', {
@@ -265,6 +281,11 @@ export default function AdminDashboard() {
       if (usersRes.ok) {
         const usersData = await usersRes.json();
         setUsers(usersData);
+      }
+
+      if (clientsRes.ok) {
+        const clientsData = await clientsRes.json();
+        setClients(clientsData);
       }
 
       if (logsRes.ok) {
@@ -348,13 +369,23 @@ export default function AdminDashboard() {
     return operator ? operator.name : 'Unassigned';
   };
 
+  const getClientName = (zoneId) => {
+    const zone = zones.find(z => z.id === zoneId);
+    if (!zone || !zone.client_id) return 'Unassigned';
+    
+    const client = clients.find(c => c.id === zone.client_id);
+    return client ? client.name : 'Unassigned';
+  };
+
   // Quick Actions Handlers
   const handleAddGenerator = () => {
     setEditingItem(null);
     setGeneratorForm({
-      name: '',
       kva: '',
       zone_id: '',
+      fuel_type: 'diesel',
+      current_fuel_level: '',
+      fuel_capacity_liters: '',
       status: 'offline'
     });
     setShowGeneratorModal(true);
@@ -374,28 +405,12 @@ export default function AdminDashboard() {
 
   const handleAddClient = () => {
     setEditingItem(null);
-    setUserForm({
+    setClientForm({
       name: '',
-      username: '',
-      email: '',
-      password: '',
-      role: 'client',
-      phone: ''
+      location: '',
+      description: ''
     });
-    setShowUserModal(true);
-  };
-
-  const handleAddOperator = () => {
-    setEditingItem(null);
-    setUserForm({
-      name: '',
-      username: '',
-      email: '',
-      password: '',
-      role: 'operator',
-      phone: ''
-    });
-    setShowUserModal(true);
+    setShowClientModal(true);
   };
 
   const handleAddUser = () => {
@@ -405,7 +420,7 @@ export default function AdminDashboard() {
       username: '',
       email: '',
       password: '',
-      role: 'client',
+      role: 'OPERATOR',
       phone: ''
     });
     setShowUserModal(true);
@@ -454,7 +469,17 @@ export default function AdminDashboard() {
       const token = localStorage.getItem('token');
       const url = editingItem ? '/api/generators' : '/api/generators';
       const method = editingItem ? 'PUT' : 'POST';
-      const body = editingItem ? { ...generatorForm, id: editingItem.id } : generatorForm;
+      
+      // Auto-generate name for new generators
+      let generatorData = { ...generatorForm };
+      if (!editingItem) {
+        // Count existing generators with same KVA to get sequence
+        const sameKvaGenerators = generators.filter(g => g.kva === parseInt(generatorForm.kva));
+        const sequence = sameKvaGenerators.length + 1;
+        generatorData.name = `${generatorForm.kva}KVA-${sequence}`;
+      } else {
+        generatorData.id = editingItem.id;
+      }
 
       const response = await fetch(url, {
         method,
@@ -462,7 +487,7 @@ export default function AdminDashboard() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(generatorData)
       });
 
       if (response.ok) {
@@ -543,13 +568,44 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleClientSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/clients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(clientForm)
+      });
+
+      if (response.ok) {
+        await fetchData();
+        setShowClientModal(false);
+        setEditingItem(null);
+        toast.success('Client created successfully!');
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Operation failed');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Operation failed');
+    }
+  };
+
   const handleEdit = (item, type) => {
     setEditingItem(item);
     if (type === 'generator') {
       setGeneratorForm({
-        name: item.name,
         kva: item.kva,
         zone_id: item.zone_id,
+        fuel_type: item.fuel_type,
+        current_fuel_level: item.current_fuel_level,
+        fuel_capacity_liters: item.fuel_capacity_liters,
         status: item.status
       });
       setShowGeneratorModal(true);
@@ -674,11 +730,11 @@ export default function AdminDashboard() {
               <span className="text-sm font-medium text-green-900">Add Client</span>
             </button>
             <button 
-              onClick={handleAddClient}
+              onClick={handleAddUser}
               className="flex items-center space-x-3 p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
             >
               <Users className="h-5 w-5 text-purple-600" />
-              <span className="text-sm font-medium text-purple-900">Add Operator</span>
+              <span className="text-sm font-medium text-purple-900">Add User</span>
             </button>
             <button 
               onClick={handleExportReport}
@@ -769,6 +825,9 @@ export default function AdminDashboard() {
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{generator.name}</h3>
                           <p className="text-sm text-gray-600">{getZoneName(generator.zone_id)}</p>
+                          <p className="text-xs text-gray-500">
+                            Client: {getClientName(generator.zone_id) || 'Unassigned'}
+                          </p>
                         </div>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(generator.status)}`}>
                           {getStatusIcon(generator.status)}
@@ -835,7 +894,7 @@ export default function AdminDashboard() {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {users.filter(u => u.role === 'client').map(client => {
+                  {clients.map(client => {
                     const clientZones = zones.filter(z => z.client_id === client.id);
                     const totalGenerators = clientZones.reduce((sum, zone) => {
                       return sum + generators.filter(g => g.zone_id === zone.id).length;
@@ -849,7 +908,7 @@ export default function AdminDashboard() {
                         <div className="flex items-start justify-between mb-4">
                           <div>
                             <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
-                            <p className="text-sm text-gray-600">{client.email}</p>
+                            <p className="text-sm text-gray-600">{client.location}</p>
                           </div>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {clientZones.length} Zones
@@ -998,13 +1057,17 @@ export default function AdminDashboard() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">KVA</label>
-            <input
-              type="number"
+            <select
               value={generatorForm.kva}
               onChange={(e) => setGeneratorForm({...generatorForm, kva: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
-            />
+            >
+              <option value="">Select KVA</option>
+              {kvaOptions.map(kva => (
+                <option key={kva} value={kva}>{kva} KVA</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Zone</label>
@@ -1018,6 +1081,53 @@ export default function AdminDashboard() {
               {zones.map(zone => (
                 <option key={zone.id} value={zone.id}>{zone.name}</option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
+            <select
+              value={generatorForm.fuel_type}
+              onChange={(e) => setGeneratorForm({...generatorForm, fuel_type: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="diesel">Diesel</option>
+              <option value="gasoline">Gasoline</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Current Fuel Level</label>
+            <input
+              type="number"
+              value={generatorForm.current_fuel_level}
+              onChange={(e) => setGeneratorForm({...generatorForm, current_fuel_level: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Capacity (Liters)</label>
+            <input
+              type="number"
+              value={generatorForm.fuel_capacity_liters}
+              onChange={(e) => setGeneratorForm({...generatorForm, fuel_capacity_liters: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={generatorForm.status}
+              onChange={(e) => setGeneratorForm({...generatorForm, status: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="running">Running</option>
+              <option value="offline">Offline</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="fault">Fault</option>
             </select>
           </div>
           <div className="flex justify-end space-x-3 pt-4">
@@ -1071,8 +1181,8 @@ export default function AdminDashboard() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Client</option>
-              {users.filter(u => u.role === 'client').map(user => (
-                <option key={user.id} value={user.id}>{user.name}</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>{client.name}</option>
               ))}
             </select>
           </div>
@@ -1170,8 +1280,9 @@ export default function AdminDashboard() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
-              <option value="client">Client</option>
-              <option value="operator">Operator</option>
+              <option value="ADMIN">Admin</option>
+              <option value="CLIENT">Client</option>
+              <option value="OPERATOR">Operator</option>
             </select>
           </div>
           <div>
@@ -1196,6 +1307,59 @@ export default function AdminDashboard() {
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Create User
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={showClientModal}
+        onClose={() => setShowClientModal(false)}
+        title="Add Client"
+      >
+        <form onSubmit={handleClientSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              value={clientForm.name}
+              onChange={(e) => setClientForm({...clientForm, name: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            <input
+              type="text"
+              value={clientForm.location}
+              onChange={(e) => setClientForm({...clientForm, location: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={clientForm.description}
+              onChange={(e) => setClientForm({...clientForm, description: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows="3"
+            />
+          </div>
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowClientModal(false)}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Create Client
             </button>
           </div>
         </form>
@@ -1234,8 +1398,8 @@ export default function AdminDashboard() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Operator</option>
-              {users.filter(u => u.role === 'operator').map(user => (
-                <option key={user.id} value={user.id}>{user.name}</option>
+              {users.filter(u => u.role === 'OPERATOR').map(user => (
+                <option key={user.id} value={user.id}>{user.name} ({user.role})</option>
               ))}
             </select>
           </div>
@@ -1248,6 +1412,27 @@ export default function AdminDashboard() {
               rows="3"
             />
           </div>
+          
+          {/* Show unassigned generators */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Available Generators to Assign</label>
+            <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-md p-2">
+              {generators.filter(g => !g.zone_id).length === 0 ? (
+                <p className="text-sm text-gray-500">No unassigned generators available</p>
+              ) : (
+                generators.filter(g => !g.zone_id).map(generator => (
+                  <div key={generator.id} className="flex items-center justify-between py-1">
+                    <span className="text-sm">{generator.name} ({generator.kva} KVA)</span>
+                    <span className="text-xs text-gray-500">{generator.status}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {generators.filter(g => !g.zone_id).length} unassigned generators available
+            </p>
+          </div>
+          
           <div className="flex justify-end space-x-3 pt-4">
             <button
               type="button"
