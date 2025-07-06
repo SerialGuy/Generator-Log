@@ -8,7 +8,6 @@ import AdminDashboard from './components/AdminDashboard';
 import EnhancedDashboard from './components/EnhancedDashboard';
 import BillingDashboard from './components/BillingDashboard';
 import SettingsDashboard from './components/SettingsDashboard';
-import UserManagement from './components/UserManagement';
 import AuditLogs from './components/AuditLogs';
 import Navigation from './components/Navigation';
 
@@ -37,8 +36,6 @@ export default function Home() {
 
   const renderContent = () => {
     switch (currentView) {
-      case 'users':
-        return <UserManagement />;
       case 'settings':
         return <SettingsDashboard />;
       case 'audit':
