@@ -1,77 +1,31 @@
--- Create users table with enhanced roles
-CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username VARCHAR(255) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL,
-  role VARCHAR(50) NOT NULL CHECK (role IN ('operator', 'administrator', 'commercial', 'client')),
-  phone VARCHAR(20),
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Add new columns to existing users table (only if they don't exist)
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS phone VARCHAR(20),
+ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 
--- Create zones table
-CREATE TABLE IF NOT EXISTS zones (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(255) NOT NULL,
-  location VARCHAR(255),
-  vendor VARCHAR(255),
-  square_feet INTEGER,
-  tons INTEGER,
-  assigned_operator_id UUID REFERENCES users(id) ON DELETE SET NULL,
-  client_id UUID REFERENCES users(id) ON DELETE SET NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Add new columns to existing zones table (only if they don't exist)
+ALTER TABLE zones 
+ADD COLUMN IF NOT EXISTS client_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
--- Create generators table with enhanced fields
-CREATE TABLE IF NOT EXISTS generators (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(255) NOT NULL,
-  kva INTEGER,
-  status VARCHAR(50) DEFAULT 'offline' CHECK (status IN ('running', 'offline', 'maintenance', 'fault')),
-  zone_id UUID REFERENCES zones(id) ON DELETE CASCADE,
-  last_operator_id UUID REFERENCES users(id) ON DELETE SET NULL,
-  fuel_capacity_liters DECIMAL(10,2),
-  current_fuel_level DECIMAL(10,2),
-  last_maintenance_date DATE,
-  next_maintenance_date DATE,
-  total_runtime_hours DECIMAL(10,2) DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Add new columns to existing generators table (only if they don't exist)
+ALTER TABLE generators 
+ADD COLUMN IF NOT EXISTS fuel_capacity_liters DECIMAL(10,2),
+ADD COLUMN IF NOT EXISTS current_fuel_level DECIMAL(10,2),
+ADD COLUMN IF NOT EXISTS last_maintenance_date DATE,
+ADD COLUMN IF NOT EXISTS next_maintenance_date DATE,
+ADD COLUMN IF NOT EXISTS total_runtime_hours DECIMAL(10,2) DEFAULT 0;
 
--- Create enhanced logs table
-CREATE TABLE IF NOT EXISTS logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  generator_id UUID REFERENCES generators(id) ON DELETE CASCADE,
-  generator_name VARCHAR(255),
-  zone_id UUID REFERENCES zones(id) ON DELETE CASCADE,
-  zone_name VARCHAR(255),
-  operator_id UUID REFERENCES users(id) ON DELETE SET NULL,
-  operator_name VARCHAR(255),
-  action VARCHAR(50) NOT NULL CHECK (action IN ('start', 'stop', 'maintenance', 'fault', 'fuel_refill')),
-  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  location VARCHAR(255),
-  status VARCHAR(50) CHECK (status IN ('running', 'offline', 'maintenance', 'fault')),
-  
-  -- Enhanced logging fields
-  runtime_hours DECIMAL(5,2),
-  fuel_consumed_liters DECIMAL(8,2),
-  fuel_added_liters DECIMAL(8,2),
-  fuel_level_before DECIMAL(8,2),
-  fuel_level_after DECIMAL(8,2),
-  remarks TEXT,
-  fault_description TEXT,
-  maintenance_actions TEXT,
-  
-  -- File attachments
-  attachments JSONB,
-  
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Add new columns to existing logs table (only if they don't exist)
+ALTER TABLE logs 
+ADD COLUMN IF NOT EXISTS runtime_hours DECIMAL(5,2),
+ADD COLUMN IF NOT EXISTS fuel_consumed_liters DECIMAL(8,2),
+ADD COLUMN IF NOT EXISTS fuel_added_liters DECIMAL(8,2),
+ADD COLUMN IF NOT EXISTS fuel_level_before DECIMAL(8,2),
+ADD COLUMN IF NOT EXISTS fuel_level_after DECIMAL(8,2),
+ADD COLUMN IF NOT EXISTS remarks TEXT,
+ADD COLUMN IF NOT EXISTS fault_description TEXT,
+ADD COLUMN IF NOT EXISTS maintenance_actions TEXT,
+ADD COLUMN IF NOT EXISTS attachments JSONB;
 
 -- Create fuel prices table
 CREATE TABLE IF NOT EXISTS fuel_prices (
@@ -173,7 +127,7 @@ CREATE TABLE IF NOT EXISTS maintenance_schedules (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create indexes for better performance
+-- Create indexes for better performance (only if they don't exist)
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_zones_assigned_operator ON zones(assigned_operator_id);
@@ -195,11 +149,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_table_name ON audit_logs(table_name);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 
--- Enable Row Level Security (RLS)
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE zones ENABLE ROW LEVEL SECURITY;
-ALTER TABLE generators ENABLE ROW LEVEL SECURITY;
-ALTER TABLE logs ENABLE ROW LEVEL SECURITY;
+-- Enable Row Level Security (RLS) on new tables only
 ALTER TABLE fuel_prices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE billing ENABLE ROW LEVEL SECURITY;
 ALTER TABLE billing_details ENABLE ROW LEVEL SECURITY;
@@ -208,12 +158,7 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE maintenance_schedules ENABLE ROW LEVEL SECURITY;
 
--- Create policies (basic - you may want to customize these based on your needs)
--- For now, we'll allow all operations (the application will handle authorization)
-CREATE POLICY "Allow all operations on users" ON users FOR ALL USING (true);
-CREATE POLICY "Allow all operations on zones" ON zones FOR ALL USING (true);
-CREATE POLICY "Allow all operations on generators" ON generators FOR ALL USING (true);
-CREATE POLICY "Allow all operations on logs" ON logs FOR ALL USING (true);
+-- Create policies for new tables only
 CREATE POLICY "Allow all operations on fuel_prices" ON fuel_prices FOR ALL USING (true);
 CREATE POLICY "Allow all operations on billing" ON billing FOR ALL USING (true);
 CREATE POLICY "Allow all operations on billing_details" ON billing_details FOR ALL USING (true);
@@ -222,7 +167,7 @@ CREATE POLICY "Allow all operations on audit_logs" ON audit_logs FOR ALL USING (
 CREATE POLICY "Allow all operations on system_settings" ON system_settings FOR ALL USING (true);
 CREATE POLICY "Allow all operations on maintenance_schedules" ON maintenance_schedules FOR ALL USING (true);
 
--- Insert default system settings
+-- Insert default system settings (only if they don't exist)
 INSERT INTO system_settings (setting_key, setting_value, setting_type, description, is_public) VALUES
 ('default_fuel_price', '1.50', 'decimal', 'Default fuel price per liter', true),
 ('billing_cycle_days', '30', 'integer', 'Billing cycle in days', true),
@@ -231,11 +176,13 @@ INSERT INTO system_settings (setting_key, setting_value, setting_type, descripti
 ('system_name', 'Generator Log System', 'string', 'System display name', true),
 ('timezone', 'UTC', 'string', 'System timezone', true),
 ('currency', 'USD', 'string', 'System currency', true),
-('service_fee_percentage', '5.0', 'decimal', 'Service fee percentage', true);
+('service_fee_percentage', '5.0', 'decimal', 'Service fee percentage', true)
+ON CONFLICT (setting_key) DO NOTHING;
 
--- Insert default fuel price
-INSERT INTO fuel_prices (price_per_liter, effective_date, is_active, created_by) VALUES
-(1.50, CURRENT_DATE, true, NULL);
+-- Insert default fuel price (only if none exists)
+INSERT INTO fuel_prices (price_per_liter, effective_date, is_active, created_by) 
+SELECT 1.50, CURRENT_DATE, true, NULL
+WHERE NOT EXISTS (SELECT 1 FROM fuel_prices WHERE is_active = true);
 
 -- Create functions for audit logging
 CREATE OR REPLACE FUNCTION audit_trigger_function()
@@ -258,19 +205,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create triggers for audit logging
-CREATE TRIGGER audit_users_trigger AFTER INSERT OR UPDATE OR DELETE ON users
-    FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
-
-CREATE TRIGGER audit_zones_trigger AFTER INSERT OR UPDATE OR DELETE ON zones
-    FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
-
-CREATE TRIGGER audit_generators_trigger AFTER INSERT OR UPDATE OR DELETE ON generators
-    FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
-
-CREATE TRIGGER audit_logs_trigger AFTER INSERT OR UPDATE OR DELETE ON logs
-    FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
-
+-- Create triggers for audit logging (only for new tables)
 CREATE TRIGGER audit_billing_trigger AFTER INSERT OR UPDATE OR DELETE ON billing
     FOR EACH ROW EXECUTE FUNCTION audit_trigger_function();
 

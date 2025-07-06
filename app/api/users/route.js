@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -38,7 +39,7 @@ export async function GET(request) {
 
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, username, name, email, role')
+      .select('id, username, name, email, role, phone, is_active, created_at')
       .order('name');
 
     if (error) {
@@ -66,6 +67,80 @@ export async function GET(request) {
     }
     return NextResponse.json(
       { error: 'Failed to fetch users' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request) {
+  try {
+    const user = authenticateToken(request);
+
+    if (user.role !== 'administrator') {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { username, password, name, email, role, phone, is_active } = body;
+
+    // Validate required fields
+    if (!username || !password || !name || !email || !role) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Check if username already exists
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', username)
+      .single();
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'Username already exists' },
+        { status: 400 }
+      );
+    }
+
+    // Create new user
+    const { data: newUser, error } = await supabase
+      .from('users')
+      .insert({
+        username,
+        password: hashedPassword,
+        name,
+        email,
+        role,
+        phone: phone || null,
+        is_active: is_active !== undefined ? is_active : true
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating user:', error);
+      return NextResponse.json(
+        { error: 'Failed to create user' },
+        { status: 500 }
+      );
+    }
+
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = newUser;
+    return NextResponse.json(userWithoutPassword);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return NextResponse.json(
+      { error: 'Failed to create user' },
       { status: 500 }
     );
   }

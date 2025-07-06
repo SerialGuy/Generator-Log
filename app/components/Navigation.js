@@ -13,7 +13,7 @@ import {
   Bell
 } from 'lucide-react';
 
-const Navigation = () => {
+const Navigation = ({ onViewChange, currentView }) => {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -55,18 +55,51 @@ const Navigation = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">
+              {/* Dashboard button */}
+              <button 
+                onClick={() => onViewChange('dashboard')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  currentView === 'dashboard' 
+                    ? 'text-blue-600 bg-blue-50' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Dashboard
+              </button>
+
               {/* Role-specific navigation items */}
               {user.role === 'administrator' && (
                 <>
-                  <button className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                  <button 
+                    onClick={() => onViewChange('users')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      currentView === 'users' 
+                        ? 'text-blue-600 bg-blue-50' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
                     <Users className="h-4 w-4 inline mr-2" />
                     Users
                   </button>
-                  <button className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                  <button 
+                    onClick={() => onViewChange('settings')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      currentView === 'settings' 
+                        ? 'text-blue-600 bg-blue-50' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
                     <Settings className="h-4 w-4 inline mr-2" />
                     Settings
                   </button>
-                  <button className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                  <button 
+                    onClick={() => onViewChange('audit')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      currentView === 'audit' 
+                        ? 'text-blue-600 bg-blue-50' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
                     <Activity className="h-4 w-4 inline mr-2" />
                     Audit
                   </button>
@@ -74,7 +107,14 @@ const Navigation = () => {
               )}
               
               {(user.role === 'administrator' || user.role === 'commercial') && (
-                <button className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                <button 
+                  onClick={() => onViewChange('billing')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    currentView === 'billing' 
+                      ? 'text-blue-600 bg-blue-50' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
                   <DollarSign className="h-4 w-4 inline mr-2" />
                   Billing
                 </button>
@@ -136,17 +176,62 @@ const Navigation = () => {
       {isMenuOpen && (
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+            {/* Dashboard button */}
+            <button 
+              onClick={() => {
+                onViewChange('dashboard');
+                setIsMenuOpen(false);
+              }}
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                currentView === 'dashboard' 
+                  ? 'text-blue-600 bg-blue-50' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Dashboard
+            </button>
+
             {user.role === 'administrator' && (
               <>
-                <button className="text-gray-600 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">
+                <button 
+                  onClick={() => {
+                    onViewChange('users');
+                    setIsMenuOpen(false);
+                  }}
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    currentView === 'users' 
+                      ? 'text-blue-600 bg-blue-50' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
                   <Users className="h-4 w-4 inline mr-2" />
                   Users
                 </button>
-                <button className="text-gray-600 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">
+                <button 
+                  onClick={() => {
+                    onViewChange('settings');
+                    setIsMenuOpen(false);
+                  }}
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    currentView === 'settings' 
+                      ? 'text-blue-600 bg-blue-50' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
                   <Settings className="h-4 w-4 inline mr-2" />
                   Settings
                 </button>
-                <button className="text-gray-600 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">
+                <button 
+                  onClick={() => {
+                    onViewChange('audit');
+                    setIsMenuOpen(false);
+                  }}
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    currentView === 'audit' 
+                      ? 'text-blue-600 bg-blue-50' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
                   <Activity className="h-4 w-4 inline mr-2" />
                   Audit
                 </button>
@@ -154,7 +239,17 @@ const Navigation = () => {
             )}
             
             {(user.role === 'administrator' || user.role === 'commercial') && (
-              <button className="text-gray-600 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">
+              <button 
+                onClick={() => {
+                  onViewChange('billing');
+                  setIsMenuOpen(false);
+                }}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  currentView === 'billing' 
+                    ? 'text-blue-600 bg-blue-50' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
                 <DollarSign className="h-4 w-4 inline mr-2" />
                 Billing
               </button>
