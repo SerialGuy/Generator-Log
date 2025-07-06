@@ -196,15 +196,15 @@ export default function AdminDashboard() {
   const [showGeneratorModal, setShowGeneratorModal] = useState(false);
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showAddZoneModal, setShowAddZoneModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [selectedClientForZone, setSelectedClientForZone] = useState(null);
   
   // Form states
   const [generatorForm, setGeneratorForm] = useState({
     name: '',
     kva: '',
     zone_id: '',
-    fuel_capacity_liters: '',
-    current_fuel_level: '',
     status: 'offline'
   });
   
@@ -355,8 +355,6 @@ export default function AdminDashboard() {
       name: '',
       kva: '',
       zone_id: '',
-      fuel_capacity_liters: '',
-      current_fuel_level: '',
       status: 'offline'
     });
     setShowGeneratorModal(true);
@@ -374,6 +372,32 @@ export default function AdminDashboard() {
     setShowZoneModal(true);
   };
 
+  const handleAddClient = () => {
+    setEditingItem(null);
+    setUserForm({
+      name: '',
+      username: '',
+      email: '',
+      password: '',
+      role: 'client',
+      phone: ''
+    });
+    setShowUserModal(true);
+  };
+
+  const handleAddOperator = () => {
+    setEditingItem(null);
+    setUserForm({
+      name: '',
+      username: '',
+      email: '',
+      password: '',
+      role: 'operator',
+      phone: ''
+    });
+    setShowUserModal(true);
+  };
+
   const handleAddUser = () => {
     setEditingItem(null);
     setUserForm({
@@ -385,6 +409,18 @@ export default function AdminDashboard() {
       phone: ''
     });
     setShowUserModal(true);
+  };
+
+  const handleAddZoneToClient = (client) => {
+    setSelectedClientForZone(client);
+    setZoneForm({
+      name: '',
+      location: '',
+      client_id: client.id,
+      assigned_operator_id: '',
+      description: ''
+    });
+    setShowAddZoneModal(true);
   };
 
   const handleExportReport = () => {
@@ -465,7 +501,9 @@ export default function AdminDashboard() {
       if (response.ok) {
         await fetchData();
         setShowZoneModal(false);
+        setShowAddZoneModal(false);
         setEditingItem(null);
+        setSelectedClientForZone(null);
         toast.success(editingItem ? 'Zone updated successfully' : 'Zone created successfully');
       } else {
         const error = await response.json();
@@ -512,8 +550,6 @@ export default function AdminDashboard() {
         name: item.name,
         kva: item.kva,
         zone_id: item.zone_id,
-        fuel_capacity_liters: item.fuel_capacity_liters || '',
-        current_fuel_level: item.current_fuel_level || '',
         status: item.status
       });
       setShowGeneratorModal(true);
@@ -635,14 +671,14 @@ export default function AdminDashboard() {
               className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
             >
               <MapPin className="h-5 w-5 text-green-600" />
-              <span className="text-sm font-medium text-green-900">Create Zone</span>
+              <span className="text-sm font-medium text-green-900">Add Client</span>
             </button>
             <button 
-              onClick={handleAddUser}
+              onClick={handleAddClient}
               className="flex items-center space-x-3 p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
             >
               <Users className="h-5 w-5 text-purple-600" />
-              <span className="text-sm font-medium text-purple-900">Add User</span>
+              <span className="text-sm font-medium text-purple-900">Add Operator</span>
             </button>
             <button 
               onClick={handleExportReport}
@@ -661,7 +697,7 @@ export default function AdminDashboard() {
               {[
                 { id: 'overview', label: 'Overview', icon: BarChart3 },
                 { id: 'generators', label: 'Generators', icon: Zap },
-                { id: 'zones', label: 'Zones', icon: MapPin },
+                { id: 'clients', label: 'Clients', icon: Users },
                 { id: 'activity', label: 'Recent Activity', icon: Activity }
               ].map(tab => (
                 <button
@@ -784,83 +820,159 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Zones Tab */}
-            {activeTab === 'zones' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {zones.map(zone => {
-                  const zoneGenerators = generators.filter(g => g.zone_id === zone.id);
-                  const runningGenerators = zoneGenerators.filter(g => g.status === 'running').length;
-                  
-                  return (
-                    <div key={zone.id} className="bg-gray-50 rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900">{zone.name}</h3>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {zoneGenerators.length} Generators
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-2 text-sm mb-4">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Location:</span>
-                          <span className="font-medium">{zone.location || 'N/A'}</span>
+            {/* Clients Tab */}
+            {activeTab === 'clients' && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-semibold">Clients & Their Zones</h3>
+                  <button
+                    onClick={handleAddClient}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Client</span>
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {users.filter(u => u.role === 'client').map(client => {
+                    const clientZones = zones.filter(z => z.client_id === client.id);
+                    const totalGenerators = clientZones.reduce((sum, zone) => {
+                      return sum + generators.filter(g => g.zone_id === zone.id).length;
+                    }, 0);
+                    const runningGenerators = clientZones.reduce((sum, zone) => {
+                      return sum + generators.filter(g => g.zone_id === zone.id && g.status === 'running').length;
+                    }, 0);
+                    
+                    return (
+                      <div key={client.id} className="bg-gray-50 rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
+                            <p className="text-sm text-gray-600">{client.email}</p>
+                          </div>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {clientZones.length} Zones
+                          </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Operator:</span>
-                          <span className="font-medium">{getOperatorName(zone.assigned_operator_id)}</span>
+                        
+                        <div className="space-y-2 text-sm mb-4">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Total Generators:</span>
+                            <span className="font-medium">{totalGenerators}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Running:</span>
+                            <span className="font-medium text-green-600">{runningGenerators}/{totalGenerators}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Running:</span>
-                          <span className="font-medium text-green-600">{runningGenerators}/{zoneGenerators.length}</span>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                        <div className="text-xs text-gray-500">
-                          Created: {new Date(zone.created_at).toLocaleDateString()}
+                        {/* Client Zones */}
+                        <div className="mb-4">
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">Zones:</h4>
+                          {clientZones.length === 0 ? (
+                            <p className="text-xs text-gray-500">No zones assigned</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {clientZones.map(zone => {
+                                const zoneGenerators = generators.filter(g => g.zone_id === zone.id);
+                                const zoneRunningGenerators = zoneGenerators.filter(g => g.status === 'running').length;
+                                
+                                return (
+                                  <div key={zone.id} className="bg-white rounded p-3 border border-gray-200">
+                                    <div className="flex justify-between items-center">
+                                      <div>
+                                        <p className="text-sm font-medium">{zone.name}</p>
+                                        <p className="text-xs text-gray-600">{zone.location || 'No location'}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-xs text-gray-600">{zoneGenerators.length} generators</p>
+                                        <p className="text-xs text-green-600">{zoneRunningGenerators} running</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex space-x-2">
-                          <button 
-                            onClick={() => handleEdit(zone, 'zone')}
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(zone, 'zone')}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                          <div className="text-xs text-gray-500">
+                            Created: {new Date(client.created_at).toLocaleDateString()}
+                          </div>
+                          <div className="flex space-x-2">
+                            <button 
+                              onClick={() => handleAddZoneToClient(client)}
+                              className="text-green-600 hover:text-green-800"
+                              title="Add Zone"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleEdit(client, 'client')}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(client, 'client')}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             )}
 
             {/* Recent Activity Tab */}
             {activeTab === 'activity' && (
-              <div className="space-y-4">
-                {logs.slice(0, 20).map(log => (
-                  <div key={log.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className={`p-2 rounded-full ${getStatusColor(log.action)}`}>
-                      {getStatusIcon(log.action)}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">
-                        {log.generators?.name || 'Unknown Generator'} - {log.action}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {getZoneName(log.generators?.zone_id)} • {log.operator_name || 'System'}
-                      </p>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(log.timestamp).toLocaleString()}
-                    </div>
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-semibold">Generator Activity Logs</h3>
+                  <div className="text-sm text-gray-600">
+                    Showing recent generator operations
                   </div>
-                ))}
+                </div>
+                
+                <div className="space-y-4">
+                  {logs.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Activity className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>No activity logs found</p>
+                      <p className="text-sm">Generator operations will appear here</p>
+                    </div>
+                  ) : (
+                    logs.slice(0, 20).map(log => (
+                      <div key={log.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className={`p-2 rounded-full ${getStatusColor(log.action)}`}>
+                          {getStatusIcon(log.action)}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {log.generators?.name || 'Unknown Generator'} - {log.action.toUpperCase()}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Zone: {log.generators?.zones?.name || 'Unknown Zone'} • Operator: {log.operator_name || 'System'}
+                          </p>
+                          {log.remarks && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Remarks: {log.remarks}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -907,26 +1019,6 @@ export default function AdminDashboard() {
                 <option key={zone.id} value={zone.id}>{zone.name}</option>
               ))}
             </select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Capacity (L)</label>
-              <input
-                type="number"
-                value={generatorForm.fuel_capacity_liters}
-                onChange={(e) => setGeneratorForm({...generatorForm, fuel_capacity_liters: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Current Fuel Level (L)</label>
-              <input
-                type="number"
-                value={generatorForm.current_fuel_level}
-                onChange={(e) => setGeneratorForm({...generatorForm, current_fuel_level: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
           </div>
           <div className="flex justify-end space-x-3 pt-4">
             <button
@@ -1080,7 +1172,6 @@ export default function AdminDashboard() {
             >
               <option value="client">Client</option>
               <option value="operator">Operator</option>
-              <option value="commercial">Commercial</option>
             </select>
           </div>
           <div>
@@ -1105,6 +1196,71 @@ export default function AdminDashboard() {
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Create User
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={showAddZoneModal}
+        onClose={() => setShowAddZoneModal(false)}
+        title={`Add Zone to ${selectedClientForZone?.name || 'Client'}`}
+      >
+        <form onSubmit={handleZoneSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Zone Name</label>
+            <input
+              type="text"
+              value={zoneForm.name}
+              onChange={(e) => setZoneForm({...zoneForm, name: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            <input
+              type="text"
+              value={zoneForm.location}
+              onChange={(e) => setZoneForm({...zoneForm, location: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Operator</label>
+            <select
+              value={zoneForm.assigned_operator_id}
+              onChange={(e) => setZoneForm({...zoneForm, assigned_operator_id: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Operator</option>
+              {users.filter(u => u.role === 'operator').map(user => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={zoneForm.description}
+              onChange={(e) => setZoneForm({...zoneForm, description: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows="3"
+            />
+          </div>
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowAddZoneModal(false)}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Add Zone
             </button>
           </div>
         </form>
