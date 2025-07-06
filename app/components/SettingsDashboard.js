@@ -22,6 +22,7 @@ export default function SettingsDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('settings');
   const [editingSetting, setEditingSetting] = useState(null);
+  const [editingValues, setEditingValues] = useState({});
   const [showAddSettingModal, setShowAddSettingModal] = useState(false);
   const [newSetting, setNewSetting] = useState({
     key: '',
@@ -67,10 +68,11 @@ export default function SettingsDashboard() {
     }
   };
 
-  const handleSaveSetting = async (key, value) => {
+  const handleSaveSetting = async (key) => {
     try {
       const token = localStorage.getItem('token');
       const setting = settings[key];
+      const value = editingValues[key];
       
       const response = await fetch('/api/settings', {
         method: 'POST',
@@ -93,6 +95,7 @@ export default function SettingsDashboard() {
           [key]: { ...setting, value }
         });
         setEditingSetting(null);
+        setEditingValues({});
         toast.success('Setting updated successfully');
       } else {
         const error = await response.json();
@@ -101,6 +104,34 @@ export default function SettingsDashboard() {
     } catch (error) {
       console.error('Error updating setting:', error);
       toast.error('Failed to update setting');
+    }
+  };
+
+  const handleEditSetting = (key) => {
+    setEditingSetting(key);
+    setEditingValues({
+      ...editingValues,
+      [key]: settings[key].value
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSetting(null);
+    setEditingValues({});
+  };
+
+  const handleInputChange = (key, value) => {
+    setEditingValues({
+      ...editingValues,
+      [key]: value
+    });
+  };
+
+  const handleKeyPress = (e, key) => {
+    if (e.key === 'Enter') {
+      handleSaveSetting(key);
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
     }
   };
 
@@ -285,7 +316,7 @@ export default function SettingsDashboard() {
                             </span>
                           )}
                           <button
-                            onClick={() => setEditingSetting(key)}
+                            onClick={() => handleEditSetting(key)}
                             className="text-blue-600 hover:text-blue-900"
                           >
                             <Edit className="h-4 w-4" />
@@ -303,8 +334,8 @@ export default function SettingsDashboard() {
                         <div className="mt-3">
                           {setting.type === 'boolean' ? (
                             <select
-                              value={setting.value}
-                              onChange={(e) => handleSaveSetting(key, e.target.value)}
+                              value={editingValues[key] || setting.value}
+                              onChange={(e) => handleInputChange(key, e.target.value)}
                               className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               <option value="true">True</option>
@@ -313,27 +344,29 @@ export default function SettingsDashboard() {
                           ) : setting.type === 'number' ? (
                             <input
                               type="number"
-                              value={setting.value}
-                              onChange={(e) => handleSaveSetting(key, e.target.value)}
+                              value={editingValues[key] || setting.value}
+                              onChange={(e) => handleInputChange(key, e.target.value)}
+                              onKeyDown={(e) => handleKeyPress(e, key)}
                               className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                           ) : (
                             <input
                               type="text"
-                              value={setting.value}
-                              onChange={(e) => handleSaveSetting(key, e.target.value)}
+                              value={editingValues[key] || setting.value}
+                              onChange={(e) => handleInputChange(key, e.target.value)}
+                              onKeyDown={(e) => handleKeyPress(e, key)}
                               className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                           )}
                           <div className="mt-2 flex space-x-2">
                             <button
-                              onClick={() => setEditingSetting(null)}
+                              onClick={handleCancelEdit}
                               className="text-sm text-gray-600 hover:text-gray-900"
                             >
                               Cancel
                             </button>
                             <button
-                              onClick={() => setEditingSetting(null)}
+                              onClick={() => handleSaveSetting(key)}
                               className="text-sm text-blue-600 hover:text-blue-900"
                             >
                               Save
