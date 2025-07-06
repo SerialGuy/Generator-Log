@@ -30,7 +30,7 @@ export async function GET(request) {
     const user = authenticateToken(request);
 
     // If user is operator, first get their assigned zones
-    if (user.role === 'operator') {
+    if (user.role === 'OPERATOR') {
       const { data: assignedZones } = await supabase
         .from('zones')
         .select('id')
@@ -115,7 +115,7 @@ export async function POST(request) {
     const user = authenticateToken(request);
     
     // Only admin can create generators
-    if (user.role !== 'administrator') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can create generators' },
         { status: 403 }
@@ -127,30 +127,33 @@ export async function POST(request) {
       name, 
       kva, 
       zone_id, 
+      fuel_type = 'diesel',
       fuel_capacity_liters,
       current_fuel_level,
       status = 'offline'
     } = body;
 
-    if (!name || !kva || !zone_id) {
+    if (!name || !kva) {
       return NextResponse.json(
-        { error: 'Name, KVA, and Zone ID are required' },
+        { error: 'Name and KVA are required' },
         { status: 400 }
       );
     }
 
-    // Verify zone exists
-    const { data: zone } = await supabase
-      .from('zones')
-      .select('id')
-      .eq('id', zone_id)
-      .single();
+    // Verify zone exists if zone_id is provided
+    if (zone_id) {
+      const { data: zone } = await supabase
+        .from('zones')
+        .select('id')
+        .eq('id', zone_id)
+        .single();
 
-    if (!zone) {
-      return NextResponse.json(
-        { error: 'Zone not found' },
-        { status: 404 }
-      );
+      if (!zone) {
+        return NextResponse.json(
+          { error: 'Zone not found' },
+          { status: 404 }
+        );
+      }
     }
 
     // Set current user for audit log
@@ -161,7 +164,8 @@ export async function POST(request) {
       .insert([{
         name,
         kva: parseFloat(kva),
-        zone_id,
+        zone_id: zone_id || null,
+        fuel_type,
         fuel_capacity_liters: fuel_capacity_liters ? parseFloat(fuel_capacity_liters) : null,
         current_fuel_level: current_fuel_level ? parseFloat(current_fuel_level) : null,
         status,
@@ -193,7 +197,7 @@ export async function PUT(request) {
     const user = authenticateToken(request);
     
     // Only admin can update generators
-    if (user.role !== 'administrator') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can update generators' },
         { status: 403 }
@@ -291,7 +295,7 @@ export async function DELETE(request) {
     const user = authenticateToken(request);
     
     // Only admin can delete generators
-    if (user.role !== 'administrator') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only administrators can delete generators' },
         { status: 403 }
