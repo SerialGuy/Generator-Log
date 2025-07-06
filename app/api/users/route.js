@@ -29,17 +29,18 @@ const authenticateToken = (request) => {
 export async function GET(request) {
   try {
     const user = authenticateToken(request);
-
+    
+    // Only admin can view all users
     if (user.role !== 'administrator') {
       return NextResponse.json(
-        { error: 'Access denied' },
+        { error: 'Only administrators can view all users' },
         { status: 403 }
       );
     }
 
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, username, name, email, role, phone, is_active, created_at')
+      .select('id, name, username, email, role, is_active, created_at')
       .order('name');
 
     if (error) {
@@ -75,27 +76,39 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const user = authenticateToken(request);
-
+    
+    // Only admin can create users
     if (user.role !== 'administrator') {
       return NextResponse.json(
-        { error: 'Access denied' },
+        { error: 'Only administrators can create users' },
         { status: 403 }
       );
     }
 
     const body = await request.json();
-    const { username, password, name, email, role, phone, is_active } = body;
+    const { 
+      name, 
+      username, 
+      email, 
+      password, 
+      role, 
+      phone 
+    } = body;
 
-    // Validate required fields
-    if (!username || !password || !name || !email || !role) {
+    if (!name || !username || !email || !password || !role) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Name, username, email, password, and role are required' },
         { status: 400 }
       );
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Validate role
+    if (!['client', 'operator', 'commercial'].includes(role)) {
+      return NextResponse.json(
+        { error: 'Invalid role. Must be client, operator, or commercial' },
+        { status: 400 }
+      );
+    }
 
     // Check if username already exists
     const { data: existingUser } = await supabase
@@ -111,19 +124,38 @@ export async function POST(request) {
       );
     }
 
-    // Create new user
+    // Check if email already exists
+    const { data: existingEmail } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (existingEmail) {
+      return NextResponse.json(
+        { error: 'Email already exists' },
+        { status: 400 }
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Set current user for audit log
+    await supabase.rpc('set_current_user', { user_id: user.id });
+
     const { data: newUser, error } = await supabase
       .from('users')
-      .insert({
-        username,
-        password: hashedPassword,
+      .insert([{
         name,
+        username,
         email,
+        password: hashedPassword,
         role,
         phone: phone || null,
-        is_active: is_active !== undefined ? is_active : true
-      })
-      .select()
+        is_active: true
+      }])
+      .select('id, name, username, email, role, phone, is_active, created_at')
       .single();
 
     if (error) {
@@ -134,9 +166,7 @@ export async function POST(request) {
       );
     }
 
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = newUser;
-    return NextResponse.json(userWithoutPassword);
+    return NextResponse.json(newUser);
   } catch (error) {
     console.error('Error creating user:', error);
     return NextResponse.json(

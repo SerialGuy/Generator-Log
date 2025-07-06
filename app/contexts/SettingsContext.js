@@ -86,6 +86,7 @@ export const SettingsProvider = ({ children }) => {
       case 'JPY': return '¥';
       case 'CAD': return 'C$';
       case 'AUD': return 'A$';
+      case 'INR': return '₹';
       default: return '$';
     }
   };

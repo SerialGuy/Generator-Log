@@ -22,7 +22,8 @@ import {
   Calendar,
   Filter,
   Search,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -46,6 +47,7 @@ ChartJS.register(
   Legend,
   ArcElement
 );
+
 const BarChart = ({ data, title }) => {
   const chartData = {
     labels: data.map(item => item.label),
@@ -146,7 +148,7 @@ const StatCard = ({ title, value, icon: Icon, color = 'blue', change = null }) =
       <div>
         <p className="text-sm font-medium text-gray-600">{title}</p>
         <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-        {change && (
+        {change !== null && (
           <p className={`text-sm mt-1 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
             {change > 0 ? '+' : ''}{change}% from last month
           </p>
@@ -159,6 +161,25 @@ const StatCard = ({ title, value, icon: Icon, color = 'blue', change = null }) =
   </div>
 );
 
+// Modal Components
+const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">{title}</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const { getCurrencySymbol } = useSettings();
@@ -170,6 +191,39 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Modal states
+  const [showGeneratorModal, setShowGeneratorModal] = useState(false);
+  const [showZoneModal, setShowZoneModal] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  
+  // Form states
+  const [generatorForm, setGeneratorForm] = useState({
+    name: '',
+    kva: '',
+    zone_id: '',
+    fuel_capacity_liters: '',
+    current_fuel_level: '',
+    status: 'offline'
+  });
+  
+  const [zoneForm, setZoneForm] = useState({
+    name: '',
+    location: '',
+    client_id: '',
+    assigned_operator_id: '',
+    description: ''
+  });
+  
+  const [userForm, setUserForm] = useState({
+    name: '',
+    username: '',
+    email: '',
+    password: '',
+    role: 'client',
+    phone: ''
+  });
 
   useEffect(() => {
     if (user) {
@@ -198,10 +252,25 @@ export default function AdminDashboard() {
         })
       ]);
 
-      if (generatorsRes.ok) setGenerators(await generatorsRes.json());
-      if (zonesRes.ok) setZones(await zonesRes.json());
-      if (usersRes.ok) setUsers(await usersRes.json());
-      if (logsRes.ok) setLogs(await logsRes.json());
+      if (generatorsRes.ok) {
+        const generatorsData = await generatorsRes.json();
+        setGenerators(generatorsData);
+      }
+
+      if (zonesRes.ok) {
+        const zonesData = await zonesRes.json();
+        setZones(zonesData);
+      }
+
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        setUsers(usersData);
+      }
+
+      if (logsRes.ok) {
+        const logsData = await logsRes.json();
+        setLogs(logsData);
+      }
 
       setLoading(false);
     } catch (error) {
@@ -210,55 +279,52 @@ export default function AdminDashboard() {
     }
   };
 
-  // Calculate statistics
+  // Calculate real statistics
   const stats = {
     totalGenerators: generators.length,
     totalZones: zones.length,
-    totalUsers: users.length,
-    totalLogs: logs.length,
     runningGenerators: generators.filter(g => g.status === 'running').length,
-    offlineGenerators: generators.filter(g => g.status === 'offline').length,
-    maintenanceGenerators: generators.filter(g => g.status === 'maintenance').length,
-    faultGenerators: generators.filter(g => g.status === 'fault').length,
-    activeOperators: users.filter(u => u.role === 'operator' && u.is_active).length,
-    recentLogs: logs.filter(log => {
-      const logDate = new Date(log.timestamp);
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      return logDate > yesterday;
-    }).length
+    totalUsers: users.length
   };
 
-  // Chart data
+  // Calculate percentage changes (mock data for now - would need historical data)
+  const calculatePercentageChange = (current, previous) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 100);
+  };
+
   const generatorStatusData = [
-    { label: 'Running', value: stats.runningGenerators, color: '#10B981' },
-    { label: 'Offline', value: stats.offlineGenerators, color: '#6B7280' },
-    { label: 'Maintenance', value: stats.maintenanceGenerators, color: '#F59E0B' },
-    { label: 'Fault', value: stats.faultGenerators, color: '#EF4444' }
+    { label: 'Running', value: generators.filter(g => g.status === 'running').length, color: '#10B981' },
+    { label: 'Offline', value: generators.filter(g => g.status === 'offline').length, color: '#6B7280' },
+    { label: 'Maintenance', value: generators.filter(g => g.status === 'maintenance').length, color: '#F59E0B' },
+    { label: 'Fault', value: generators.filter(g => g.status === 'fault').length, color: '#EF4444' }
   ];
 
-  const generatorCapacityData = [
-    { label: '65 KVA', value: generators.filter(g => g.kva === 65).length },
-    { label: '125 KVA', value: generators.filter(g => g.kva === 125).length },
-    { label: '250 KVA', value: generators.filter(g => g.kva === 250).length },
-    { label: '320 KVA', value: generators.filter(g => g.kva === 320).length },
-    { label: '500 KVA', value: generators.filter(g => g.kva === 500).length }
-  ];
+  const generatorCapacityData = generators.reduce((acc, generator) => {
+    const capacity = `${generator.kva} KVA`;
+    const existing = acc.find(item => item.label === capacity);
+    if (existing) {
+      existing.value++;
+    } else {
+      acc.push({ label: capacity, value: 1 });
+    }
+    return acc;
+  }, []);
 
-  const recentActivityData = logs
-    .slice(0, 10)
-    .map(log => ({
-      label: log.generators?.name || 'Unknown',
-      value: 1
-    }));
+  const filteredGenerators = generators.filter(generator => {
+    const matchesSearch = generator.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         getZoneName(generator.zone_id).toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || generator.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'running': return 'text-green-600 bg-green-100';
-      case 'offline': return 'text-gray-600 bg-gray-100';
-      case 'maintenance': return 'text-yellow-600 bg-yellow-100';
-      case 'fault': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'running': return 'bg-green-100 text-green-800';
+      case 'offline': return 'bg-gray-100 text-gray-800';
+      case 'maintenance': return 'bg-yellow-100 text-yellow-800';
+      case 'fault': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -272,13 +338,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredGenerators = generators.filter(generator => {
-    const matchesSearch = generator.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         getZoneName(generator.zone_id).toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || generator.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
   const getZoneName = (zoneId) => {
     const zone = zones.find(z => z.id === zoneId);
     return zone ? zone.name : 'Unknown Zone';
@@ -287,6 +346,212 @@ export default function AdminDashboard() {
   const getOperatorName = (operatorId) => {
     const operator = users.find(u => u.id === operatorId);
     return operator ? operator.name : 'Unassigned';
+  };
+
+  // Quick Actions Handlers
+  const handleAddGenerator = () => {
+    setEditingItem(null);
+    setGeneratorForm({
+      name: '',
+      kva: '',
+      zone_id: '',
+      fuel_capacity_liters: '',
+      current_fuel_level: '',
+      status: 'offline'
+    });
+    setShowGeneratorModal(true);
+  };
+
+  const handleCreateZone = () => {
+    setEditingItem(null);
+    setZoneForm({
+      name: '',
+      location: '',
+      client_id: '',
+      assigned_operator_id: '',
+      description: ''
+    });
+    setShowZoneModal(true);
+  };
+
+  const handleAddUser = () => {
+    setEditingItem(null);
+    setUserForm({
+      name: '',
+      username: '',
+      email: '',
+      password: '',
+      role: 'client',
+      phone: ''
+    });
+    setShowUserModal(true);
+  };
+
+  const handleExportReport = () => {
+    const csvContent = [
+      ['Generator', 'Zone', 'Status', 'Capacity', 'Fuel Level', 'Runtime'].join(','),
+      ...generators.map(g => [
+        g.name,
+        getZoneName(g.zone_id),
+        g.status,
+        `${g.kva} KVA`,
+        g.current_fuel_level ? `${g.current_fuel_level}L` : 'N/A',
+        g.total_runtime_hours ? `${g.total_runtime_hours}h` : 'N/A'
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `generator_report_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    toast.success('Report exported successfully');
+  };
+
+  // Form Handlers
+  const handleGeneratorSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const token = localStorage.getItem('token');
+      const url = editingItem ? '/api/generators' : '/api/generators';
+      const method = editingItem ? 'PUT' : 'POST';
+      const body = editingItem ? { ...generatorForm, id: editingItem.id } : generatorForm;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (response.ok) {
+        await fetchData();
+        setShowGeneratorModal(false);
+        setEditingItem(null);
+        toast.success(editingItem ? 'Generator updated successfully' : 'Generator created successfully');
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Operation failed');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Operation failed');
+    }
+  };
+
+  const handleZoneSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const token = localStorage.getItem('token');
+      const url = editingItem ? '/api/zones' : '/api/zones';
+      const method = editingItem ? 'PUT' : 'POST';
+      const body = editingItem ? { ...zoneForm, id: editingItem.id } : zoneForm;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (response.ok) {
+        await fetchData();
+        setShowZoneModal(false);
+        setEditingItem(null);
+        toast.success(editingItem ? 'Zone updated successfully' : 'Zone created successfully');
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Operation failed');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Operation failed');
+    }
+  };
+
+  const handleUserSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(userForm)
+      });
+
+      if (response.ok) {
+        await fetchData();
+        setShowUserModal(false);
+        toast.success('User created successfully');
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Operation failed');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Operation failed');
+    }
+  };
+
+  const handleEdit = (item, type) => {
+    setEditingItem(item);
+    if (type === 'generator') {
+      setGeneratorForm({
+        name: item.name,
+        kva: item.kva,
+        zone_id: item.zone_id,
+        fuel_capacity_liters: item.fuel_capacity_liters || '',
+        current_fuel_level: item.current_fuel_level || '',
+        status: item.status
+      });
+      setShowGeneratorModal(true);
+    } else if (type === 'zone') {
+      setZoneForm({
+        name: item.name,
+        location: item.location || '',
+        client_id: item.client_id || '',
+        assigned_operator_id: item.assigned_operator_id || '',
+        description: item.description || ''
+      });
+      setShowZoneModal(true);
+    }
+  };
+
+  const handleDelete = async (item, type) => {
+    if (!confirm(`Are you sure you want to delete this ${type}?`)) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/${type}s?id=${item.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        await fetchData();
+        toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Delete failed');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Delete failed');
+    }
   };
 
   if (loading) {
@@ -329,28 +594,28 @@ export default function AdminDashboard() {
             value={stats.totalGenerators}
             icon={Zap}
             color="blue"
-            change={5}
+            change={calculatePercentageChange(stats.totalGenerators, Math.max(0, stats.totalGenerators - 2))}
           />
           <StatCard
             title="Active Zones"
             value={stats.totalZones}
             icon={MapPin}
             color="green"
-            change={2}
+            change={calculatePercentageChange(stats.totalZones, Math.max(0, stats.totalZones - 1))}
           />
           <StatCard
             title="Running Generators"
             value={stats.runningGenerators}
             icon={Activity}
             color="emerald"
-            change={12}
+            change={calculatePercentageChange(stats.runningGenerators, Math.max(0, stats.runningGenerators - 3))}
           />
           <StatCard
             title="Total Users"
             value={stats.totalUsers}
             icon={Users}
             color="purple"
-            change={-1}
+            change={calculatePercentageChange(stats.totalUsers, Math.max(0, stats.totalUsers - 1))}
           />
         </div>
 
@@ -358,19 +623,31 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+            <button 
+              onClick={handleAddGenerator}
+              className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            >
               <Plus className="h-5 w-5 text-blue-600" />
               <span className="text-sm font-medium text-blue-900">Add Generator</span>
             </button>
-            <button className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+            <button 
+              onClick={handleCreateZone}
+              className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+            >
               <MapPin className="h-5 w-5 text-green-600" />
               <span className="text-sm font-medium text-green-900">Create Zone</span>
             </button>
-            <button className="flex items-center space-x-3 p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+            <button 
+              onClick={handleAddUser}
+              className="flex items-center space-x-3 p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+            >
               <Users className="h-5 w-5 text-purple-600" />
               <span className="text-sm font-medium text-purple-900">Add User</span>
             </button>
-            <button className="flex items-center space-x-3 p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
+            <button 
+              onClick={handleExportReport}
+              className="flex items-center space-x-3 p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+            >
               <Download className="h-5 w-5 text-orange-600" />
               <span className="text-sm font-medium text-orange-900">Export Report</span>
             </button>
@@ -487,11 +764,17 @@ export default function AdminDashboard() {
                           Last updated: {new Date(generator.updated_at).toLocaleDateString()}
                         </div>
                         <div className="flex space-x-2">
-                          <button className="text-blue-600 hover:text-blue-800">
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button className="text-gray-600 hover:text-gray-800">
+                          <button 
+                            onClick={() => handleEdit(generator, 'generator')}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
                             <Edit className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(generator, 'generator')}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
@@ -537,11 +820,17 @@ export default function AdminDashboard() {
                           Created: {new Date(zone.created_at).toLocaleDateString()}
                         </div>
                         <div className="flex space-x-2">
-                          <button className="text-blue-600 hover:text-blue-800">
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button className="text-gray-600 hover:text-gray-800">
+                          <button 
+                            onClick={() => handleEdit(zone, 'zone')}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
                             <Edit className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(zone, 'zone')}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
@@ -577,6 +866,249 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <Modal
+        isOpen={showGeneratorModal}
+        onClose={() => setShowGeneratorModal(false)}
+        title={editingItem ? 'Edit Generator' : 'Add Generator'}
+      >
+        <form onSubmit={handleGeneratorSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              value={generatorForm.name}
+              onChange={(e) => setGeneratorForm({...generatorForm, name: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">KVA</label>
+            <input
+              type="number"
+              value={generatorForm.kva}
+              onChange={(e) => setGeneratorForm({...generatorForm, kva: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Zone</label>
+            <select
+              value={generatorForm.zone_id}
+              onChange={(e) => setGeneratorForm({...generatorForm, zone_id: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select Zone</option>
+              {zones.map(zone => (
+                <option key={zone.id} value={zone.id}>{zone.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Capacity (L)</label>
+              <input
+                type="number"
+                value={generatorForm.fuel_capacity_liters}
+                onChange={(e) => setGeneratorForm({...generatorForm, fuel_capacity_liters: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current Fuel Level (L)</label>
+              <input
+                type="number"
+                value={generatorForm.current_fuel_level}
+                onChange={(e) => setGeneratorForm({...generatorForm, current_fuel_level: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowGeneratorModal(false)}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              {editingItem ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={showZoneModal}
+        onClose={() => setShowZoneModal(false)}
+        title={editingItem ? 'Edit Zone' : 'Create Zone'}
+      >
+        <form onSubmit={handleZoneSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              value={zoneForm.name}
+              onChange={(e) => setZoneForm({...zoneForm, name: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            <input
+              type="text"
+              value={zoneForm.location}
+              onChange={(e) => setZoneForm({...zoneForm, location: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+            <select
+              value={zoneForm.client_id}
+              onChange={(e) => setZoneForm({...zoneForm, client_id: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Client</option>
+              {users.filter(u => u.role === 'client').map(user => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Operator</label>
+            <select
+              value={zoneForm.assigned_operator_id}
+              onChange={(e) => setZoneForm({...zoneForm, assigned_operator_id: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Operator</option>
+              {users.filter(u => u.role === 'operator').map(user => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={zoneForm.description}
+              onChange={(e) => setZoneForm({...zoneForm, description: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows="3"
+            />
+          </div>
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowZoneModal(false)}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              {editingItem ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        title="Add User"
+      >
+        <form onSubmit={handleUserSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              value={userForm.name}
+              onChange={(e) => setUserForm({...userForm, name: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <input
+              type="text"
+              value={userForm.username}
+              onChange={(e) => setUserForm({...userForm, username: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              value={userForm.email}
+              onChange={(e) => setUserForm({...userForm, email: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input
+              type="password"
+              value={userForm.password}
+              onChange={(e) => setUserForm({...userForm, password: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <select
+              value={userForm.role}
+              onChange={(e) => setUserForm({...userForm, role: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="client">Client</option>
+              <option value="operator">Operator</option>
+              <option value="commercial">Commercial</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <input
+              type="tel"
+              value={userForm.phone}
+              onChange={(e) => setUserForm({...userForm, phone: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowUserModal(false)}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Create User
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 } 

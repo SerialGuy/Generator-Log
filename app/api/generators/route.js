@@ -108,4 +108,244 @@ export async function GET(request) {
       { status: 500 }
     );
   }
+}
+
+export async function POST(request) {
+  try {
+    const user = authenticateToken(request);
+    
+    // Only admin can create generators
+    if (user.role !== 'administrator') {
+      return NextResponse.json(
+        { error: 'Only administrators can create generators' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { 
+      name, 
+      kva, 
+      zone_id, 
+      fuel_capacity_liters,
+      current_fuel_level,
+      status = 'offline'
+    } = body;
+
+    if (!name || !kva || !zone_id) {
+      return NextResponse.json(
+        { error: 'Name, KVA, and Zone ID are required' },
+        { status: 400 }
+      );
+    }
+
+    // Verify zone exists
+    const { data: zone } = await supabase
+      .from('zones')
+      .select('id')
+      .eq('id', zone_id)
+      .single();
+
+    if (!zone) {
+      return NextResponse.json(
+        { error: 'Zone not found' },
+        { status: 404 }
+      );
+    }
+
+    // Set current user for audit log
+    await supabase.rpc('set_current_user', { user_id: user.id });
+
+    const { data: generator, error } = await supabase
+      .from('generators')
+      .insert([{
+        name,
+        kva: parseFloat(kva),
+        zone_id,
+        fuel_capacity_liters: fuel_capacity_liters ? parseFloat(fuel_capacity_liters) : null,
+        current_fuel_level: current_fuel_level ? parseFloat(current_fuel_level) : null,
+        status,
+        total_runtime_hours: 0
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating generator:', error);
+      return NextResponse.json(
+        { error: 'Failed to create generator' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(generator);
+  } catch (error) {
+    console.error('Error creating generator:', error);
+    return NextResponse.json(
+      { error: 'Failed to create generator' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request) {
+  try {
+    const user = authenticateToken(request);
+    
+    // Only admin can update generators
+    if (user.role !== 'administrator') {
+      return NextResponse.json(
+        { error: 'Only administrators can update generators' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { 
+      id,
+      name, 
+      kva, 
+      zone_id, 
+      fuel_capacity_liters,
+      current_fuel_level,
+      status,
+      total_runtime_hours
+    } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Generator ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Verify generator exists
+    const { data: existingGenerator } = await supabase
+      .from('generators')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (!existingGenerator) {
+      return NextResponse.json(
+        { error: 'Generator not found' },
+        { status: 404 }
+      );
+    }
+
+    // If zone_id is being updated, verify zone exists
+    if (zone_id) {
+      const { data: zone } = await supabase
+        .from('zones')
+        .select('id')
+        .eq('id', zone_id)
+        .single();
+
+      if (!zone) {
+        return NextResponse.json(
+          { error: 'Zone not found' },
+          { status: 404 }
+        );
+      }
+    }
+
+    // Set current user for audit log
+    await supabase.rpc('set_current_user', { user_id: user.id });
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (kva) updateData.kva = parseFloat(kva);
+    if (zone_id) updateData.zone_id = zone_id;
+    if (fuel_capacity_liters !== undefined) updateData.fuel_capacity_liters = fuel_capacity_liters ? parseFloat(fuel_capacity_liters) : null;
+    if (current_fuel_level !== undefined) updateData.current_fuel_level = current_fuel_level ? parseFloat(current_fuel_level) : null;
+    if (status) updateData.status = status;
+    if (total_runtime_hours !== undefined) updateData.total_runtime_hours = parseFloat(total_runtime_hours);
+
+    const { data: generator, error } = await supabase
+      .from('generators')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating generator:', error);
+      return NextResponse.json(
+        { error: 'Failed to update generator' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(generator);
+  } catch (error) {
+    console.error('Error updating generator:', error);
+    return NextResponse.json(
+      { error: 'Failed to update generator' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const user = authenticateToken(request);
+    
+    // Only admin can delete generators
+    if (user.role !== 'administrator') {
+      return NextResponse.json(
+        { error: 'Only administrators can delete generators' },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Generator ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Verify generator exists
+    const { data: existingGenerator } = await supabase
+      .from('generators')
+      .select('id, name')
+      .eq('id', id)
+      .single();
+
+    if (!existingGenerator) {
+      return NextResponse.json(
+        { error: 'Generator not found' },
+        { status: 404 }
+      );
+    }
+
+    // Set current user for audit log
+    await supabase.rpc('set_current_user', { user_id: user.id });
+
+    const { error } = await supabase
+      .from('generators')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting generator:', error);
+      return NextResponse.json(
+        { error: 'Failed to delete generator' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ 
+      message: `Generator "${existingGenerator.name}" deleted successfully` 
+    });
+  } catch (error) {
+    console.error('Error deleting generator:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete generator' },
+      { status: 500 }
+    );
+  }
 } 
